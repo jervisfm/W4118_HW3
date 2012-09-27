@@ -9,8 +9,7 @@ Emulator's keyboard is sometimes unresponsive for a couple of seconds, clicking 
 
 Instructions:
 Android SDK is required. Device needs to be unlocked with USB debugging enabled (not necessary for emulator)
-For the device you need to package a new boot image along with the ramdisk using the tool
-	mkbootimg along with the files boot.img-ramdisk.gz extracted from
+For the device you need to package a new boot image along with the ramdisk ramdisk.img extracted from
 	Nexus 7 factory image (https://developers.google.com/android/nexus/images)
 	The ram disk is modified to enable debugging on all apps and adb root access
 
@@ -32,10 +31,10 @@ c) Build for emulator or device under same source tree (NOTE: zImage gets overwr
 	ii) Device -
 	make tegra3_android_defconfig
 	make
-	./mkbootimg --kernel arch/arm/boot/zImage --ramdisk boot.img-ramdisk.gz -o boot.img --base 10000000
 	adb reboot bootloader
-	fastboot boot boot.img	# This does NOT flash your device, next time you restart you will get the
-				# clean image. In order to flash your device look in to fastboot flash
+	fastboot boot arch/arm/boot/zImage ramdisk.img	# This does NOT flash your device, next time you
+							# restart you will get the inboxed image. In order
+							# to flash your device look in to fastboot flash
 
 
 Credits:
