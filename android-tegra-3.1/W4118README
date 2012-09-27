@@ -1,7 +1,7 @@
 # Naser AlDuaij
 # Linux 3.1.10 version for running on both the android emulator and Nexus 7 device
 # Code base: tegra (android-tegra3-grouper-3.1-jb-fr2)
-# Emulator drivers and configuration files ported from 2.6.29 (Goldfish) and Linux 3.2
+# Emulator drivers and configuration files patched from 2.6.29 (Goldfish) and Linux 3.2
 
 Known issues:
 Emulator's keyboard is sometimes unresponsive for a couple of seconds, clicking the screen
