@@ -615,6 +615,13 @@ config DCC_TTY
 	tristate "DCC tty driver"
 	depends on ARM
 
+
+config GOLDFISH_TTY
+	tristate "Goldfish TTY Driver"
+	default n
+	help
+	  TTY driver for Goldfish Virtual Platform.
+
 source "drivers/s390/char/Kconfig"
 
 config RAMOOPS
@@ -645,4 +652,3 @@ config TILE_SROM
 	  how to partition a single ROM for multiple purposes.
 
 endmenu
-

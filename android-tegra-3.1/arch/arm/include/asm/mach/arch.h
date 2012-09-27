@@ -18,6 +18,9 @@ struct machine_desc {
 	unsigned int		nr;		/* architecture number	*/
 	const char		*name;		/* architecture name	*/
 	unsigned long		boot_params;	/* tagged list		*/
+#ifdef EMULATOR_BRANCH
+	unsigned long		atag_offset;	/* tagged list PORT MODIFICATION */
+#endif
 	const char		**dt_compat;	/* array of device tree
 						 * 'compatible' strings	*/
 

@@ -242,10 +242,20 @@ static inline void *phys_to_virt(phys_addr_t x)
  * memory.  Use of these is *deprecated* (and that doesn't mean
  * use the __ prefixed forms instead.)  See dma-mapping.h.
  */
+/* PORT modification */
 #ifndef __virt_to_bus
 #define __virt_to_bus	__virt_to_phys
+#endif
+
+#ifndef __bus_to_virt
 #define __bus_to_virt	__phys_to_virt
+#endif
+
+#ifndef __pfn_to_bus
 #define __pfn_to_bus(x)	__pfn_to_phys(x)
+#endif
+
+#ifndef	__bus_to_pfn
 #define __bus_to_pfn(x)	__phys_to_pfn(x)
 #endif
 

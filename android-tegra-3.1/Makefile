@@ -369,6 +369,9 @@ KBUILD_CFLAGS   := -Wall -Wundef -Wstrict-prototypes -Wno-trigraphs \
 		   -Werror-implicit-function-declaration \
 		   -Wno-format-security \
 		   -fno-delete-null-pointer-checks
+
+KBUILD_CFLAGS += $(shell /bin/grep -q CONFIG_ARCH_GOLDFISH=y ./.config >/dev/null 2>&1 && echo "-DEMULATOR_BRANCH" || echo "-UEMULATOR_BRANCH")
+
 KBUILD_AFLAGS_KERNEL :=
 KBUILD_CFLAGS_KERNEL :=
 KBUILD_AFLAGS   := -D__ASSEMBLY__

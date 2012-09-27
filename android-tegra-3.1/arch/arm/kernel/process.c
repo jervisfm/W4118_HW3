@@ -275,17 +275,23 @@ void machine_halt(void)
 	machine_shutdown();
 	while (1);
 }
+#ifndef EMULATOR_BRANCH /* PORT MODIFICATION */
 extern unsigned battery_cable_status;
+#endif
 void machine_power_off(void)
 {
+#ifndef EMULATOR_BRANCH /* PORT MODIFICATION */
 	if(!battery_cable_status){
+#endif
 		machine_shutdown();
 		if (pm_power_off)
 			pm_power_off();
+#ifndef EMULATOR_BRANCH /* PORT MODIFICATION */
 	}else{
 		printk("machine_power_off:go to charger mode!");
 		machine_restart("chrager-mode");
 	}
+#endif
 }
 
 void machine_restart(char *cmd)
