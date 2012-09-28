@@ -1,6 +1,6 @@
 /*
  * Columbia University
- * COMS W4118 Fall 2010
+ * COMS W4118 Fall 2012
  * Homework 3 - orientd
  *
  */
@@ -11,7 +11,8 @@
 #include <string.h>
 #include <unistd.h>
 #include <sys/ioctl.h>
-#include "../linux-2.6.35-cm/include/linux/akm8976.h"
+/*#include "../linux-2.6.35-cm/include/linux/akm8976.h"*/
+#include "../android-tegra-3.1/include/linux/akm8975.h"
 
 #include <hardware/hardware.h>
 #include <hardware/sensors.h> /* <-- This is a good place to look! */
