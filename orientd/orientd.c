@@ -2,7 +2,6 @@
  * Columbia University
  * COMS W4118 Fall 2010
  * Homework 3 - orientd
- * teamN: UNI, UNI, UNI
  *
  */
 #include <bionic/errno.h> /* Google does things a little different...*/
