@@ -286,6 +286,9 @@ int main(int argc, char **argv)
 		daemonize();
 	}
 
+	/* quick fix; enable orientation sensor */
+	qemud_channel_send(qfd, "set:orientation:1", -1);
+	
 	while (!s_should_exit) {
 		float x, y, z;
 		char *sensor_name;
@@ -322,7 +325,7 @@ int main(int argc, char **argv)
 			z = tmpY;
 		}
 
-		snprintf(command, sizeof(command), "force-sensor:%d:%g:%g:%g:",
+		snprintf(command, sizeof(command), "update-sensor:%d:%g:%g:%g:",
 			 sensor_id, x, y, z);
 
 		dbg("simulating %s event: %s\n", sensor_name, command);
