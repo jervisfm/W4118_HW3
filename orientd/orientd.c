@@ -12,7 +12,6 @@
 #include <string.h>
 #include <unistd.h>
 #include <sys/ioctl.h>
-/*#include "../linux-2.6.35-cm/include/linux/akm8976.h"*/
 #include "../android-tegra-3.1/include/linux/akm8975.h"
 
 #include <hardware/hardware.h>
@@ -43,39 +42,6 @@
 static int open_compass(struct sensors_module_t **hw_module,
 			struct sensors_poll_device_t **poll_device);
 static void enumerate_sensors(const struct sensors_module_t *sensors);
-#if 0
-static void close_compass(struct sensors_control_device_t *ctrl,
-			  struct sensors_data_device_t *data);
-
-
-static int poll_sensor_data(struct sensors_data_device_t *compass_data)
-{
-	int rc;
-	sensors_data_t data;
-
-	rc = compass_data->poll(compass_data, &data);
-
-	if (rc == (int)0x7FFFFFFF) {
-		/* wake() was called: someone else is using the device, so
-		   we should probably think about letting go for just a bit */
-		dbg_compass("wake() called [sleeping a bit]...\n");
-		sleep(1);
-	} else if (rc < 0) {
-		printf("[E]: %d\n", rc);
-		return -1;
-	}
-
-	if (data.sensor != SENSORS_ORIENTATION)
-		return -1;
-
-	/* At this point we should have valid data */
-	dbg_compass("Orientation: azimuth=%0.2f, pitch=%0.2f, "
-			"roll=%0.2f\n", data.orientation.azimuth,
-		data.orientation.pitch, data.orientation.roll);
-
-	return 0;
-}
-#endif
 
 static int poll_sensor_data(struct sensors_poll_device_t *sensors_device)
 {
@@ -85,13 +51,14 @@ static int poll_sensor_data(struct sensors_poll_device_t *sensors_device)
 	ssize_t count = sensors_device->poll(sensors_device, buffer, minBufferSize);
 	int i;
 	for (i = 0; i < count; ++i) {
+		/* Find compass sensor */
 		if (buffer[i].sensor != SENSOR_TYPE_ORIENTATION)
 			continue;
-		
-	printf("orientation: %0.2f, %0.2f, %0.2f\n",
-	       buffer[i].orientation.azimuth,
-	       buffer[i].orientation.pitch,
-	       buffer[i].orientation.roll);
+	
+		/* At this point we should have valid data */
+		dbg_compass("Orientation: azimuth=%0.2f, pitch=%0.2f, "
+			"roll=%0.2f\n", buffer[i].orientation.azimuth,
+			buffer[i].orientation.pitch, buffer[i].orientation.roll);
 	}
 	return 0;
 }
@@ -111,27 +78,15 @@ int main(int argc, char **argv)
 		return EXIT_FAILURE;
 	}
 
-	printf("still alive\n");
 	enumerate_sensors(sensors_module);
-	while (1) {
-	poll_sensor_data(sensors_device);
-	}
-	return 0;
-#if 0
 
-
-	while (poll_sensor_data(compass_data));
-
+	/* Fill in daemon implementation around here */
 	printf("turn me into a daemon!\n");
-
-	close_compass(compass_ctrl, compass_data);
-
-	/* HINT: you should poll (using the sensors_data_device_t method)
-	   for data from a sensor whose sensors_data_t.sensor value is
-	   equal to SENSORS_ORIENTATION */
+	while (1) {
+		poll_sensor_data(sensors_device);
+	}
 
 	return EXIT_SUCCESS;
-#endif
 }
 
 /*                DO NOT MODIFY BELOW THIS LINE                    */
@@ -167,81 +122,10 @@ static int open_compass(struct sensors_module_t **mSensorModule,
 	size_t i;
 	for (i=0 ; i<(size_t)count ; i++)
 		(*mSensorDevice)->activate(*mSensorDevice, list[i].handle, 1);
-	return 0;
-
-#if 0
-	int rc;
-	native_handle_t *nhandle;
-
-	rc = hw_get_module("sensors", hw_module);
-	if (rc < 0) {
-		printf("Failed to open sensors module: %d (%s)\n",
-			rc, strerror(errno));
-		return -1;
-	}
-	dbg_compass("%s/%s: tag:%d, version:%d.%d author:%s\n",
-				(*hw_module)->id, (*hw_module)->name,
-				(*hw_module)->tag, (*hw_module)->version_major,
-				(*hw_module)->version_minor,
-				(*hw_module)->author);
-
-	/* ignore return value here due to bug in
-	   sensors.trout module! */
-	sensors_control_open(*hw_module, ctrl);
-
-	if (*ctrl == NULL) {
-		printf("Unable to open sensor ctrl device (%s)\n",
-			strerror(errno));
-		return -1;
-	}
-	dbg_compass("HW Device tag: %d, version: %d\n", (*ctrl)->common.tag,
-				(*ctrl)->common.version);
-
-
-	/* set the event delay period */
-	(*ctrl)->set_delay(*ctrl, ORIENTATION_UPDATE_PERIOD_MS);
-
-	/* activate the orientation sensor
-	   (requires accelerometer and magnetic field) */
-	(*ctrl)->activate(*ctrl, ID_ORIENTATION, 1);
-	(*ctrl)->activate(*ctrl, ID_ACCELERATION, 1);
-	(*ctrl)->activate(*ctrl, ID_MAGNETIC_FIELD, 1);
-
-	/* open the data device */
-	nhandle = (*ctrl)->open_data_source(*ctrl);
-	if (nhandle == NULL) {
-		printf("Unable to open compass data source (%s)\n",
-			strerror(errno));
-		return -1;
-	}
-
-	/* initialize the data device structure */
-	sensors_data_open(*hw_module, data);
-	if (*data == NULL) {
-		printf("Unable to init sensor data module (%s)\n",
-			strerror(errno));
-		return -1;
-	}
-
-	/* re-assign the data device handle to the data module */
-	if ((*data)->data_open(*data, nhandle) < 0) {
-		printf("Unable to open compass data handle (%s)\n",
-			strerror(errno));
-		return -1;
-	}
 
 	return 0;
-#endif
-}
-#if 0
-static void close_compass(struct sensors_control_device_t *ctrl,
-			  struct sensors_data_device_t *data)
-{
-	sensors_data_close(data);
-	sensors_control_close(ctrl);
 }
 
-#endif
 static void enumerate_sensors(const struct sensors_module_t *sensors)
 {
 	int nr, s;
