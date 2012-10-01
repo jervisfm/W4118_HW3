@@ -77,14 +77,6 @@ static int poll_sensor_data(struct sensors_data_device_t *compass_data)
 }
 #endif
 
-static void convert_orientation(sensors_event_t *buffer)
-{
-	const float rad2deg = 360;//180 / M_PI;
-	buffer->orientation.azimuth *= 360;//rad2deg;
-	buffer->orientation.pitch *= 360;//rad2deg;
-	buffer->orientation.roll *= 180;//rad2deg;
-}
-
 static int poll_sensor_data(struct sensors_poll_device_t *sensors_device)
 {
     const size_t numEventMax = 16;
@@ -93,9 +85,8 @@ static int poll_sensor_data(struct sensors_poll_device_t *sensors_device)
 	ssize_t count = sensors_device->poll(sensors_device, buffer, minBufferSize);
 	int i;
 	for (i = 0; i < count; ++i) {
-		if (buffer[i].sensor != SENSORS_ORIENTATION)
+		if (buffer[i].sensor != SENSOR_TYPE_ORIENTATION)
 			continue;
-		//convert_orientation(&buffer[i]);
 		
 	printf("orientation: %0.2f, %0.2f, %0.2f\n",
 	       buffer[i].orientation.azimuth,
