@@ -6,6 +6,7 @@
  */
 #include <bionic/errno.h> /* Google does things a little different...*/
 #include <fcntl.h>
+#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -39,14 +40,13 @@
 #endif
 
 /* helper functions which you should use */
-static int open_compass(const struct hw_module_t **hw_module,
-			struct sensors_control_device_t **ctrl,
-			struct sensors_data_device_t **data);
-
+static int open_compass(struct sensors_module_t **hw_module,
+			struct sensors_poll_device_t **poll_device);
+static void enumerate_sensors(const struct sensors_module_t *sensors);
+#if 0
 static void close_compass(struct sensors_control_device_t *ctrl,
 			  struct sensors_data_device_t *data);
 
-static void enumerate_sensors(const struct sensors_module_t *sensors);
 
 static int poll_sensor_data(struct sensors_data_device_t *compass_data)
 {
@@ -75,23 +75,58 @@ static int poll_sensor_data(struct sensors_data_device_t *compass_data)
 
 	return 0;
 }
+#endif
 
+static void convert_orientation(sensors_event_t *buffer)
+{
+	const float rad2deg = 360;//180 / M_PI;
+	buffer->orientation.azimuth *= 360;//rad2deg;
+	buffer->orientation.pitch *= 360;//rad2deg;
+	buffer->orientation.roll *= 180;//rad2deg;
+}
+
+static int poll_sensor_data(struct sensors_poll_device_t *sensors_device)
+{
+    const size_t numEventMax = 16;
+    const size_t minBufferSize = numEventMax;
+    sensors_event_t buffer[minBufferSize];
+	ssize_t count = sensors_device->poll(sensors_device, buffer, minBufferSize);
+	int i;
+	for (i = 0; i < count; ++i) {
+		if (buffer[i].sensor != SENSORS_ORIENTATION)
+			continue;
+		//convert_orientation(&buffer[i]);
+		
+	printf("orientation: %0.2f, %0.2f, %0.2f\n",
+	       buffer[i].orientation.azimuth,
+	       buffer[i].orientation.pitch,
+	       buffer[i].orientation.roll);
+	}
+	return 0;
+}
 
 /* entry point of orientd: fill in daemon implementation
    where indicated */
 int main(int argc, char **argv)
 {
-	const struct sensors_module_t *hw_sensors;
-	struct sensors_control_device_t *compass_ctrl = NULL;
-	struct sensors_data_device_t *compass_data = NULL;
+	struct sensors_module_t *sensors_module = NULL;
+	struct sensors_poll_device_t *sensors_device = NULL;
 
 	/* open and initialize the orientation sensor */
 	printf("Opening sensors...\n");
-	if (open_compass((const struct hw_module_t **)&hw_sensors,
-			 &compass_ctrl, &compass_data) < 0)
+	if (open_compass(&sensors_module,
+			 &sensors_device) < 0) {
+		printf("open_compass failed\n");
 		return EXIT_FAILURE;
+	}
 
-	enumerate_sensors(hw_sensors);
+	printf("still alive\n");
+	enumerate_sensors(sensors_module);
+	while (1) {
+	poll_sensor_data(sensors_device);
+	}
+	return 0;
+#if 0
 
 
 	while (poll_sensor_data(compass_data));
@@ -105,15 +140,45 @@ int main(int argc, char **argv)
 	   equal to SENSORS_ORIENTATION */
 
 	return EXIT_SUCCESS;
+#endif
 }
 
 /*                DO NOT MODIFY BELOW THIS LINE                    */
 /* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 
-static int open_compass(const struct hw_module_t **hw_module,
-			struct sensors_control_device_t **ctrl,
-			struct sensors_data_device_t **data)
+static int open_compass(struct sensors_module_t **mSensorModule,
+			struct sensors_poll_device_t **mSensorDevice)
 {
+   
+	int err = hw_get_module(SENSORS_HARDWARE_MODULE_ID,
+				     (hw_module_t const**)mSensorModule);
+
+	if (err) {
+		printf("couldn't load %s module (%s)",
+			SENSORS_HARDWARE_MODULE_ID, strerror(-err));
+	}
+
+	if (!*mSensorModule)
+		return -1;
+
+	err = sensors_open(&((*mSensorModule)->common), mSensorDevice);
+
+	if (err) {
+		printf("couldn't open device for module %s (%s)",
+			SENSORS_HARDWARE_MODULE_ID, strerror(-err));
+	}
+
+	if (!*mSensorDevice)
+		return -1;
+
+	const struct sensor_t *list;
+	ssize_t count = (*mSensorModule)->get_sensors_list(*mSensorModule, &list);
+	size_t i;
+	for (i=0 ; i<(size_t)count ; i++)
+		(*mSensorDevice)->activate(*mSensorDevice, list[i].handle, 1);
+	return 0;
+
+#if 0
 	int rc;
 	native_handle_t *nhandle;
 
@@ -175,8 +240,9 @@ static int open_compass(const struct hw_module_t **hw_module,
 	}
 
 	return 0;
+#endif
 }
-
+#if 0
 static void close_compass(struct sensors_control_device_t *ctrl,
 			  struct sensors_data_device_t *data)
 {
@@ -184,10 +250,13 @@ static void close_compass(struct sensors_control_device_t *ctrl,
 	sensors_control_close(ctrl);
 }
 
+#endif
 static void enumerate_sensors(const struct sensors_module_t *sensors)
 {
 	int nr, s;
 	const struct sensor_t *slist = NULL;
+	if (!sensors)
+		printf("going to fail\n");
 
 	nr = sensors->get_sensors_list((struct sensors_module_t *)sensors,
 					&slist);
@@ -198,9 +267,25 @@ static void enumerate_sensors(const struct sensors_module_t *sensors)
 
 	for (s = 0; s < nr; s++) {
 		printf("%s (%s) v%d\n\tHandle:%d, type:%d, max:%0.2f, "
-			"resolution:%0.2f\n", slist[s].name, slist[s].vendor,
+			"resolution:%0.2f ", slist[s].name, slist[s].vendor,
 			slist[s].version, slist[s].handle, slist[s].type,
 			slist[s].maxRange, slist[s].resolution);
+                switch (slist[s].type) {
+                    case SENSOR_TYPE_ORIENTATION:
+			printf("SENSOR_TYPE_ORIENTATION\n");
+                        break;
+                    case SENSOR_TYPE_GYROSCOPE:
+			printf("SENSOR_TYPE_GYROSCOPE\n");
+                        break;
+                    case SENSOR_TYPE_GRAVITY:
+			printf("SENSOR_TYPE_GRAVITY\n");
+			break;
+                    case SENSOR_TYPE_LINEAR_ACCELERATION:
+			printf("SENSOR_TYPE_ACCELERATION\n");
+			break;
+                    case SENSOR_TYPE_ROTATION_VECTOR:
+			printf("SENSOR_TYPE_ROTATION_VECTOR\n");
+			break;
+                }
 	}
 }
-
