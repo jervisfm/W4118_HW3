@@ -325,6 +325,21 @@ int main(int argc, char **argv)
 			z = tmpY;
 		}
 
+		if (y > 180 || y < -180) {
+			err("pitch out of range\n");
+			continue;
+		}
+
+		if (z > 90 || z < -90) {
+			err("roll out of range\n");
+			continue;
+		}
+
+		if (x >= 360 || x < 0) {
+			err("azimuth out of range\n");
+			continue;
+		}
+
 		snprintf(command, sizeof(command), "update-sensor:%d:%g:%g:%g:",
 			 sensor_id, x, y, z);
 

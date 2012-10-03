@@ -16,7 +16,7 @@ For the device you need to package a new boot image along with the ramdisk ramdi
 a) These values have to be exported.
 export ARCH=arm
 export SUBARCH=arm
-export CROSS_COMPILE=arm-eabi
+export CROSS_COMPILE=arm-none-linux-gnueabi-
 export PATH=$(pwd)/prebuilt/linux-x86/toolchain/arm-eabi-4.4.3/bin:$PATH  # cd to parent dir of prebuilt
 OPTIONAL: In order to change the kernel name shown in the OS use export LOCALVERSION="-YOUR_STRING"
 

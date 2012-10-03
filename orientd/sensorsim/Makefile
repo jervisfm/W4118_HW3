@@ -59,8 +59,9 @@ install: $(TARGET)
 run_emu: run
 run_dev: run
 run: install
-	@echo [RUN] calling /system/bin/$(TARGET) on $(ADB_TGT)...
-	@adb $(ADB_OPT) shell /system/bin/$(TARGET) $(RUN_OPTS)
+	@echo Type "sensorsim" in adb shell...
+	@adb $(ADB_OPT) shell
+	#@adb $(ADB_OPT) shell /system/bin/$(TARGET) $(RUN_OPTS)
 
 .PHONY:
 

@@ -38,6 +38,8 @@
 	#define dbg_compass(fmt, ...)
 #endif
 
+static int effective_sensor;
+
 /* helper functions which you should use */
 static int open_compass(struct sensors_module_t **hw_module,
 			struct sensors_poll_device_t **poll_device);
@@ -52,9 +54,9 @@ static int poll_sensor_data(struct sensors_poll_device_t *sensors_device)
 	int i;
 	for (i = 0; i < count; ++i) {
 		/* Find compass sensor */
-		if (buffer[i].sensor != SENSOR_TYPE_ORIENTATION)
+		if (buffer[i].sensor != effective_sensor)
 			continue;
-	
+
 		/* At this point we should have valid data */
 		dbg_compass("Orientation: azimuth=%0.2f, pitch=%0.2f, "
 			"roll=%0.2f\n", buffer[i].orientation.azimuth,
@@ -67,6 +69,7 @@ static int poll_sensor_data(struct sensors_poll_device_t *sensors_device)
    where indicated */
 int main(int argc, char **argv)
 {
+	effective_sensor = -1;
 	struct sensors_module_t *sensors_module = NULL;
 	struct sensors_poll_device_t *sensors_device = NULL;
 
@@ -142,9 +145,16 @@ static void enumerate_sensors(const struct sensors_module_t *sensors)
 
 	for (s = 0; s < nr; s++) {
 		printf("%s (%s) v%d\n\tHandle:%d, type:%d, max:%0.2f, "
-			"resolution:%0.2f ", slist[s].name, slist[s].vendor,
+			"resolution:%0.2f \n", slist[s].name, slist[s].vendor,
 			slist[s].version, slist[s].handle, slist[s].type,
 			slist[s].maxRange, slist[s].resolution);
+
+		/* Awful hack to make it work on emulator */
+		if (slist[s].type == 2 && slist[s].handle == 1)
+			effective_sensor = 2;
+		else if (slist[s].type == 3 && slist[s].handle == 3)
+			effective_sensor = SENSOR_TYPE_ORIENTATION;
+
                 switch (slist[s].type) {
                     case SENSOR_TYPE_ORIENTATION:
 			printf("SENSOR_TYPE_ORIENTATION\n");
