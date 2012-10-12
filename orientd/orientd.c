@@ -93,7 +93,17 @@ int main(int argc, char **argv)
 	}
 
 	enumerate_sensors(sensors_module);
+	int ret = fork();
+	if(ret < 0) { /* error happended */
+		 printf("error: Failed to fork. Exiting...");
+		 exit(-1);
+	} if (ret == 0){ /* child process */
 
+	} else { /* parent process */
+		/* Kiill parent process so that child process is
+		 * inherited by init and becomes a daemon */
+		exit(0);
+	}
 	/* Fill in daemon implementation around here */
 	printf("turn me into a daemon!\n");
 	while (1) {
