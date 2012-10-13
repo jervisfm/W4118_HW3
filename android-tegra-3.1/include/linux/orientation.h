@@ -6,7 +6,8 @@
 #include <linux/spinlock.h>
 #include <linux/types.h>
 #include <asm/atomic.h>
-#include <linux/kernel.h>
+// #include <linux/kernel.h>
+#include <linux/slab.h>
 
 /* Types for lock entry */
 #define READER_ENTRY 0

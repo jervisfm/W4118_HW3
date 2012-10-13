@@ -126,6 +126,7 @@ SYSCALL_DEFINE1(orientlock_read, struct orientation_range __user *, orient)
 {
 	struct orientation_range *korient;
 	struct lock_entry *entry;
+	DEFINE_WAIT(wait);
 	
 	korient = kmalloc(sizeof(struct orientation_range), GFP_KERNEL);
 	if (copy_from_user(korient, orient, sizeof(struct orientation_range)) != 0)
@@ -141,10 +142,10 @@ SYSCALL_DEFINE1(orientlock_read, struct orientation_range __user *, orient)
 	spin_lock(&WAITERS_LOCK);
 	list_add_tail(&entry->list, &waiters_list);
 	spin_unlock(&WAITERS_LOCK);
-	DEFINE_WAIT(wait);
 	
+
 	add_wait_queue(&sleepers, &wait);
-	while(!atomic_read(&entry.granted)) {
+	while(!atomic_read(&entry->granted)) {
 	       prepare_to_wait(&sleepers, &wait, TASK_INTERRUPTIBLE);
 	       schedule();
 	}
@@ -157,6 +158,7 @@ SYSCALL_DEFINE1(orientlock_write, struct orientation_range __user *, orient)
 {
 	struct orientation_range *korient;
 	struct lock_entry *entry;
+	DEFINE_WAIT(wait);
 	
 	korient = kmalloc(sizeof(struct orientation_range), GFP_KERNEL);
 	if (copy_from_user(korient, orient, sizeof(struct orientation_range)) != 0)
@@ -173,10 +175,9 @@ SYSCALL_DEFINE1(orientlock_write, struct orientation_range __user *, orient)
 	list_add_tail(&entry->list, &waiters_list);
 	spin_unlock(&WAITERS_LOCK);
 
-	DEFINE_WAIT(wait);
 	
 	add_wait_queue(&sleepers, &wait);
-	while(!atomic_read(&entry.granted)) {
+	while(!atomic_read(&entry->granted)) {
 		prepare_to_wait(&sleepers, &wait, TASK_INTERRUPTIBLE);
 		schedule();
 	}
@@ -194,7 +195,8 @@ SYSCALL_DEFINE1(orientunlock_read, struct orientation_range __user *, orient)
 		return -EFAULT;
 	
 	list_for_each(current_item, &granted_list) {
-		entry = list_entry(current, struct lock_entry, granted_list);
+		entry = list_entry(current_item,
+				   struct lock_entry, granted_list);
 		if (range_equals(&korient, entry->range) &&
 		    entry->type == READER_ENTRY)
 			break;
@@ -218,7 +220,7 @@ SYSCALL_DEFINE1(orientunlock_write, struct orientation_range __user *, orient)
 	struct lock_entry *entry;
 	list_for_each(current_item, &granted_list) {
 		entry = list_entry(current, struct lock_entry, granted_list);
-		if (range_equals(korient, entry->range) &&
+		if (range_equals(&korient, entry->range) &&
 		    entry->type == WRITER_ENTRY)
 			break;
 		else
