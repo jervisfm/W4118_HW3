@@ -5,16 +5,11 @@
  *      Author: w4118
  */
 
-#ifndef SELECTOR_C_
-#define SELECTOR_C_
-
-#endif /* SELECTOR_C_ */
-
-
-#include "../android-tegra-3.1/include/linux/orientation.h"
 #include <stdio.h>
 #include <ctype.h> /* for is_digit method */
 #include <stdlib.h>
+#include "orient_lock.h"
+
 
 #define FILENAME "integer"
 
@@ -30,18 +25,6 @@ erminated using ctrl+c by the user. Before releasing the write lock, you should
  *
  */
 
-
-/* DELETE  THIS LATER
- * Defines orientation range. The ranges give the "width" of
- * the range. If one of the range values is 0, it is not considered
- * as defining the range (ignored).
- */
-struct orientation_range {
-	struct dev_orientation orient;  /* device orientation */
-	unsigned int azimuth_range;     /* +/- degrees around Z-axis */
-	unsigned int pitch_range;       /* +/- degrees around X-axis */
-	unsigned int roll_range;        /* +/- degrees around Y-axis */
-};
 
 static void usage() {
 	printf("Invalid arguments.\n");
@@ -89,13 +72,12 @@ int main(int argc, char **argv) {
 		/* Take the write lock */
 		orientlock_write(&write_lock);
 
-		FILE* integer_file = fopen(filename, "w");
+		FILE *integer_file = fopen(filename, "w");
 		fprintf(integer_file, "%d", counter);
 
 		/* Release write lock */
 		orientunlock_write(&write_lock);
 		++counter;
 		fclose(integer_file);
-
 	}
 }
