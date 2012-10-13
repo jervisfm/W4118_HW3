@@ -386,6 +386,10 @@
 		CALL(sys_sendmmsg)
 /* 375 */	CALL(sys_setns)
 		CALL(sys_set_orientation)
+		CALL(sys_orientlock_read)
+		CALL(sys_orientlock_write)
+		CALL(sys_orientunlock_read)
+/* 380 */	CALL(sys_orientunlock_write)
 #ifndef syscalls_counted
 .equ syscalls_padding, ((NR_syscalls + 3) & ~3) - NR_syscalls
 #define syscalls_counted

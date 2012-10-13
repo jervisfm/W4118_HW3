@@ -1,6 +1,10 @@
 #ifndef _LINUX_ORIENTATION_H
 #define _LINUX_ORIENTATION_H
 
+#include <linux/wait.h>
+#include <linux/list.h>
+#include <linux/spinlock.h>
+
 struct dev_orientation {
 	int azimuth; /* angle between the magnetic north
 	                and the Y axis, around the Z axis
@@ -11,6 +15,28 @@ struct dev_orientation {
 	                -90<=roll<=90 */
 };
 
-struct dev_orientation k_orient;
+struct dev_orientation current_orient;
+
+struct orientation_range {
+	struct dev_orientation orient;  /* device orientation */
+	unsigned int azimuth_range;     /* +/- degrees around Z-axis */
+	unsigned int pitch_range;       /* +/- degrees around X-axis */
+	unsigned int roll_range;        /* +/- degrees around Y-axis */
+};
+
+struct lock_entry {
+	struct orientation_range *range;
+	atomic_t granted;
+	list_head list;
+	list_head granted_list;
+	const int type; /* 0 for read 1 for write */
+};
+
+LIST_HEAD(waiters_list);
+LIST_HEAD(granted_list);
+
+spinlock_t WAITERS_LOCK = 0;
+
+DECLARE_WAIT_QUEUE_HEAD(sleepers);
 
 #endif /* _LINUX_ORIENTATION_H */
