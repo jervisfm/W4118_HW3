@@ -13,17 +13,17 @@ void print_orientation(struct dev_orientation orient)
 int orient_equals(struct dev_orientation one, struct dev_orientation two)
 {
 	return (one.azimuth == two.azimuth &&
-			one.pitch == two.pitch &&
-			one.roll == two.roll);
+		one.pitch == two.pitch &&
+		one.roll == two.roll);
 }
 
 int range_equals(struct orientation_range *range,
-		struct orientation_range *target)
+		 struct orientation_range *target)
 {
 	return (range->azimuth_range == target->azimuth_range &&
-			range->pitch_range == target->pitch_range &&
-			range->roll_range == target->roll_range &&
-			orient_equals(range->orient, target->orieng));
+		range->pitch_range == target->pitch_range &&
+		range->roll_range == target->roll_range &&
+		orient_equals(range->orient, target->orient));
 }
 
 int generic_search_list(struct orientation_range *target,
@@ -37,9 +37,9 @@ int generic_search_list(struct orientation_range *target,
 			entry = list_entry(current, struct lock_entry, list);
 		else
 			entry = list_entry(current, struct lock_entry,
-					granted_list);
-		if (lock_entry->type == type &&
-				range_equals(lock_entry->range, target)) {
+					   granted_list);
+		if (entry->type == type &&
+		    range_equals(entry->range, target)) {
 			flag = 0;
 			break;
 		}
@@ -68,20 +68,20 @@ void grant_lock(struct lock_entry *entry)
 	list_add_tail(&granted_list, entry->granted_list);
 	spin_lock(&WAITERS_LOCK);
 	list_del(entry->list);
-	spin_unlock(&WAITERS_UNLOCK);
+	spin_unlock(&WAITERS_LOCK);
 }
 
 int in_range(struct orientation_range *range, struct dev_orientation orient)
 {
 	struct dev_orientation basis = range->orient;
-	if (orient.azimuth > basis.azimuth + range->azimuth_range
-		|| orient.azimuth < basis.azimuth + range->azimuth_range)
+	if (orient.azimuth > basis.azimuth + range->azimuth_range ||
+	    orient.azimuth < basis.azimuth - range->azimuth_range)
 		return 0;
-	if (orient.pitch > basis.pitch + range->pitch_range
-		|| orient.pitch < basis.pitch + range->pitch_range)
+	if (orient.pitch > basis.pitch + range->pitch_range ||
+	    orient.pitch < basis.pitch - range->pitch_range)
 		return 0;
-	if (orient.roll > basis.roll + range->roll_range
-		|| orient.roll < basis.roll + range->roll_range)
+	if (orient.roll > basis.roll + range->roll_range ||
+	    orient.roll < basis.roll - range->roll_range)
 		return 0;
 	return 1;
 }
@@ -90,15 +90,18 @@ void process_waiter(struct list_head *current)
 {
 	struct lock_entry *entry = list_entry(current, struct lock_entry, list);
 	if (in_range(entry->range, current_orient)) {
-		if (entry->type == 0)
+		if (entry->type == READER_ENTRY) { /* Reader */
 			if (no_writer_waiting() && no_writer_grabbed())
 				grant_lock(entry);
-		else
+		}
+		else { /* Writer */
 			if (no_writer_grabbed() && no_reader_grabbed())
 				grant_lock(entry);
+		}
 	}
 }
 
+/* TODO: Do we really need __user in our definitions ??? */
 SYSCALL_DEFINE1(set_orientation, struct dev_orientation __user *, orient)
 {
 	//TODO: Lock set_orientation for multiprocessing
@@ -124,24 +127,26 @@ SYSCALL_DEFINE1(orientlock_read, struct orientation_range __user *, orient)
 	if (copy_from_user(korient, orient, sizeof(orientation_range)) != 0)
 		return -EFAULT;
 
-	entry = kmalloc(sizeof(entry), GFP_KERNEL);
+	entry = kmalloc(sizeof(struct lock_entry), GFP_KERNEL);
 	entry->range = korient;
 	entry->granted = 0;
 	INIT_LIST_HEAD(&entry->list);
 	INIT_LIST_HEAD(&entry->granted_list);
-	entry->type = 0;
+	entry->type = READER_ENTRY;
 
 	spin_lock(&WAITERS_LOCK);
-	list_add_tail(&head, &waiters_list);
+	list_add_tail(entry, &waiters_list);
 	spin_unlock(&WAITERS_LOCK);
 	DEFINE_WAIT(wait);
 	
 	add_wait_queue(sleepers, &wait);
 	while(!entry.granted) {
-		prepare_to_wait(&sleepers, &wait, TASK_INTERRUPTIBLE);
-		schedule();
+	       prepare_to_wait(&sleepers, &wait, TASK_INTERRUPTIBLE);
+	       schedule();
 	}
 	finish_wait(&sleepers, &wait);
+
+	return 0;
 }
 
 SYSCALL_DEFINE1(orientlock_write, struct orientation_range __user *, orient)
@@ -158,10 +163,10 @@ SYSCALL_DEFINE1(orientlock_write, struct orientation_range __user *, orient)
 	entry->granted = 0;
 	INIT_LIST_HEAD(&entry->list);
 	INIT_LIST_HEAD(&entry->granted_list);
-	entry->type = 1;
+	entry->type = WRITER_ENTRY;
 	
 	spin_lock(&WAITERS_LOCK);
-	list_add_tail(&head, &waiters_list);
+	list_add_tail(entry, &waiters_list);
 	spin_unlock(&WAITERS_LOCK);
 
 	DEFINE_WAIT(wait);
@@ -172,6 +177,7 @@ SYSCALL_DEFINE1(orientlock_write, struct orientation_range __user *, orient)
 		schedule();
 	}
 	finish_wait(&sleepers, &wait);
+	return 0;
 }
 
 SYSCALL_DEFINE1(orientunlock_read, struct orientation_range __user *, orient)
@@ -197,5 +203,8 @@ SYSCALL_DEFINE1(orientunlock_read, struct orientation_range __user *, orient)
 SYSCALL_DEFINE1(orientunlock_write, struct orientation_range __user *, orient)
 {
 	//TODO: Remember to free lock_entry and range
+
+
+
 }
 

@@ -5,6 +5,10 @@
 #include <linux/list.h>
 #include <linux/spinlock.h>
 
+/* Types for lock entry */
+#define READER_ENTRY 0
+#define WRITER_ENTRY 1
+
 struct dev_orientation {
 	int azimuth; /* angle between the magnetic north
 	                and the Y axis, around the Z axis
@@ -27,7 +31,7 @@ struct orientation_range {
 struct lock_entry {
 	struct orientation_range *range;
 	atomic_t granted;
-	list_head list;
+	list_head list; /* Waiters list */
 	list_head granted_list;
 	const int type; /* 0 for read 1 for write */
 };
