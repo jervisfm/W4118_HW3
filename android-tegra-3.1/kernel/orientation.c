@@ -123,8 +123,8 @@ SYSCALL_DEFINE1(orientlock_read, struct orientation_range __user *, orient)
 	struct orientation_range *korient;
 	struct lock_entry *entry;
 	
-	korient = kmalloc(sizeof(orientation_range), GFP_KERNEL);
-	if (copy_from_user(korient, orient, sizeof(orientation_range)) != 0)
+	korient = kmalloc(sizeof(struct orientation_range), GFP_KERNEL);
+	if (copy_from_user(korient, orient, sizeof(struct orientation_range)) != 0)
 		return -EFAULT;
 
 	entry = kmalloc(sizeof(struct lock_entry), GFP_KERNEL);
@@ -154,8 +154,8 @@ SYSCALL_DEFINE1(orientlock_write, struct orientation_range __user *, orient)
 	struct orientation_range *korient;
 	struct lock_entry *entry;
 	
-	korient = kmalloc(sizeof(orientation_range), GFP_KERNEL);
-	if (copy_from_user(korient, orient, sizeof(orientation_range)) != 0)
+	korient = kmalloc(sizeof(struct orientation_range), GFP_KERNEL);
+	if (copy_from_user(korient, orient, sizeof(struct orientation_range)) != 0)
 		return -EFAULT;
 
 	entry = kmalloc(sizeof(entry), GFP_KERNEL);
@@ -183,14 +183,15 @@ SYSCALL_DEFINE1(orientlock_write, struct orientation_range __user *, orient)
 SYSCALL_DEFINE1(orientunlock_read, struct orientation_range __user *, orient)
 {
 	struct orientation_range korient;
-	if (copy_from_user(&korient, orient, sizeof(orientation_range)) != 0)
+	if (copy_from_user(&korient, orient, sizeof(struct orientation_range)) != 0)
 		return -EFAULT;
 	
 	struct list_head *current;
 	struct lock_entry *entry;
 	list_for_each(current, &granted_list) {
 		entry = list_entry(current, struct lock_entry, granted_list);
-		if (range_equals(korient, current->range) && entry->type == 0)
+		if (range_equals(korient, entry->range) &&
+		    entry->type == READER_ENTRY)
 			break;
 		else
 			; //no locks with the orientation_range available
@@ -198,13 +199,28 @@ SYSCALL_DEFINE1(orientunlock_read, struct orientation_range __user *, orient)
 	list_del(current);
 	kfree(entry->range);
 	kfree(entry);
+	return 0;
 }
 
 SYSCALL_DEFINE1(orientunlock_write, struct orientation_range __user *, orient)
 {
 	//TODO: Remember to free lock_entry and range
+	struct orientation_range korient;
+	if (copy_from_user(&korient, orient, sizeof(struct orientation_range)) != 0)
+		return -EFAULT;
 
-
-
+	struct list_head *current;
+	struct lock_entry *entry;
+	list_for_each(current, &granted_list) {
+		entry = list_entry(current, struct lock_entry, granted_list);
+		if (range_equals(korient, entry->range) &&
+		    entry->type == WRITER_ENTRY)
+			break;
+		else
+			; //no locks with the orientation_range available
+	}
+	list_del(current);
+	kfree(entry->range);
+	kfree(entry);
+	return 0;
 }
-
