@@ -5,7 +5,7 @@ CFLAGS := -Wall -Werror -g -I../tools/gmp/include
 LDFLAGS := -L../tools/gmp/lib -lgmp -lm -static
 
 
-all: trial pollard
+all: trial pollard selector
 
 
 trial: trial.c
@@ -14,7 +14,9 @@ trial: trial.c
 pollard: pollard.c
 	$(CC) -o $@ $< $(CFLAGS) $(LDFLAGS)
 
+selector: selector.c
+
 clean:
-	rm -f pollard.o trial.o trial pollard
+	rm -f pollard.o trial.o selector.o trial pollard selector
 
 .PHONY: clean
