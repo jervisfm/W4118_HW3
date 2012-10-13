@@ -403,6 +403,10 @@
 #define __NR_sendmmsg			(__NR_SYSCALL_BASE+374)
 #define __NR_setns			(__NR_SYSCALL_BASE+375)
 #define __NR_set_orientation		(__NR_SYSCALL_BASE+376)
+#define __NR_orientlock_read		(__NR_SYSCALL_BASE+377)
+#define __NR_orientlock_write		(__NR_SYSCALL_BASE+378)
+#define __NR_orientunlock_read		(__NR_SYSCALL_BASE+379)
+#define __NR_orientunlock_write		(__NR_SYSCALL_BASE+380)
 
 /*
  * The following SWIs are ARM private.
