@@ -4,6 +4,7 @@
 #include <linux/wait.h>
 #include <linux/list.h>
 #include <linux/spinlock.h>
+#include <linux/types.h>
 
 /* Types for lock entry */
 #define READER_ENTRY 0
@@ -31,8 +32,8 @@ struct orientation_range {
 struct lock_entry {
 	struct orientation_range *range;
 	atomic_t granted;
-	list_head list; /* Waiters list */
-	list_head granted_list;
+	struct list_head list; /* Waiters list */
+	struct list_head granted_list;
 	const int type; /* 0 for read 1 for write */
 };
 

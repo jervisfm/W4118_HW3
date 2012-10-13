@@ -30,8 +30,8 @@ int generic_search_list(struct orientation_range *target,
 			struct list_head *list, int type)
 {
 	int flag = 1;
-	struct list_head *current;
-	list_for_each(current, list) {
+	struct list_head *current_item;
+	list_for_each(current_item, list) {
 		struct lock_entry *entry;
 		if (list == &waiters_list)
 			entry = list_entry(current, struct lock_entry, list);
@@ -86,9 +86,10 @@ int in_range(struct orientation_range *range, struct dev_orientation orient)
 	return 1;
 }
 
-void process_waiter(struct list_head *current)
+void process_waiter(struct list_head *current_item)
 {
-	struct lock_entry *entry = list_entry(current, struct lock_entry, list);
+	struct lock_entry *entry = list_entry(current_item,
+					      struct lock_entry, list);
 	if (in_range(entry->range, current_orient)) {
 		if (entry->type == READER_ENTRY) { /* Reader */
 			if (no_writer_waiting() && no_writer_grabbed())
