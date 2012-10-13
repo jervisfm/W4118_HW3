@@ -5,6 +5,8 @@
 #include <linux/list.h>
 #include <linux/spinlock.h>
 #include <linux/types.h>
+#include <asm/atomic.h>
+#include <linux/kernel.h>
 
 /* Types for lock entry */
 #define READER_ENTRY 0
@@ -34,7 +36,7 @@ struct lock_entry {
 	atomic_t granted;
 	struct list_head list; /* Waiters list */
 	struct list_head granted_list;
-	const int type; /* 0 for read 1 for write */
+	int type; /* 0 for read 1 for write */
 };
 
 LIST_HEAD(waiters_list);

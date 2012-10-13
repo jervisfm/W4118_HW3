@@ -64,8 +64,8 @@ int no_reader_grabbed(struct orientation_range *target)
 
 void grant_lock(struct lock_entry *entry)
 {
-	entry->granted = 1;
-	list_add_tail(&granted_list, entry->granted_list);
+	atomic_set(&entry->granted,1);
+	list_add_tail(&entry->granted_list, &granted_list);
 	spin_lock(&WAITERS_LOCK);
 	list_del(&entry->list);
 	spin_unlock(&WAITERS_LOCK);
@@ -90,14 +90,16 @@ void process_waiter(struct list_head *current_item)
 {
 	struct lock_entry *entry = list_entry(current_item,
 					      struct lock_entry, list);
-	struct orientation_range *target;
+	struct orientation_range *target = entry->range;
 	if (in_range(entry->range, current_orient)) {
 		if (entry->type == READER_ENTRY) { /* Reader */
-			if (no_writer_waiting(target) && no_writer_grabbed())
+			if (no_writer_waiting(target) &&
+			   no_writer_grabbed(target))
 				grant_lock(entry);
 		}
 		else { /* Writer */
-			if (no_writer_grabbed() && no_reader_grabbed())
+			if (no_writer_grabbed(target) &&
+			    no_reader_grabbed(target))
 				grant_lock(entry);
 		}
 	}
@@ -106,12 +108,12 @@ void process_waiter(struct list_head *current_item)
 /* TODO: Do we really need __user in our definitions ??? */
 SYSCALL_DEFINE1(set_orientation, struct dev_orientation __user *, orient)
 {
+	struct list_head *current_item;
 	//TODO: Lock set_orientation for multiprocessing
 	if (copy_from_user(&current_orient, orient,
 				sizeof(struct dev_orientation)) != 0)
 		return -EFAULT;
-	
-	struct list_head *current_item;
+
 	list_for_each(current_item, &waiters_list)
 		process_waiter(current_item);
 
@@ -131,18 +133,18 @@ SYSCALL_DEFINE1(orientlock_read, struct orientation_range __user *, orient)
 
 	entry = kmalloc(sizeof(struct lock_entry), GFP_KERNEL);
 	entry->range = korient;
-	entry->granted = 0;
+	atomic_set(&entry->granted,0);
 	INIT_LIST_HEAD(&entry->list);
 	INIT_LIST_HEAD(&entry->granted_list);
 	entry->type = READER_ENTRY;
 
 	spin_lock(&WAITERS_LOCK);
-	list_add_tail(entry, &waiters_list);
+	list_add_tail(&entry->list, &waiters_list);
 	spin_unlock(&WAITERS_LOCK);
 	DEFINE_WAIT(wait);
 	
-	add_wait_queue(sleepers, &wait);
-	while(!entry.granted) {
+	add_wait_queue(&sleepers, &wait);
+	while(!atomic_read(&entry.granted)) {
 	       prepare_to_wait(&sleepers, &wait, TASK_INTERRUPTIBLE);
 	       schedule();
 	}
@@ -168,13 +170,13 @@ SYSCALL_DEFINE1(orientlock_write, struct orientation_range __user *, orient)
 	entry->type = WRITER_ENTRY;
 	
 	spin_lock(&WAITERS_LOCK);
-	list_add_tail(entry, &waiters_list);
+	list_add_tail(&entry->list, &waiters_list);
 	spin_unlock(&WAITERS_LOCK);
 
 	DEFINE_WAIT(wait);
 	
-	add_wait_queue(sleepers, &wait);
-	while(!entry.granted) {
+	add_wait_queue(&sleepers, &wait);
+	while(!atomic_read(&entry.granted)) {
 		prepare_to_wait(&sleepers, &wait, TASK_INTERRUPTIBLE);
 		schedule();
 	}
@@ -185,14 +187,15 @@ SYSCALL_DEFINE1(orientlock_write, struct orientation_range __user *, orient)
 SYSCALL_DEFINE1(orientunlock_read, struct orientation_range __user *, orient)
 {
 	struct orientation_range korient;
+	struct list_head *current_item;
+	struct lock_entry *entry;
+
 	if (copy_from_user(&korient, orient, sizeof(struct orientation_range)) != 0)
 		return -EFAULT;
 	
-	struct list_head *current_item;
-	struct lock_entry *entry;
 	list_for_each(current_item, &granted_list) {
 		entry = list_entry(current, struct lock_entry, granted_list);
-		if (range_equals(korient, entry->range) &&
+		if (range_equals(&korient, entry->range) &&
 		    entry->type == READER_ENTRY)
 			break;
 		else
@@ -211,9 +214,9 @@ SYSCALL_DEFINE1(orientunlock_write, struct orientation_range __user *, orient)
 	if (copy_from_user(&korient, orient, sizeof(struct orientation_range)) != 0)
 		return -EFAULT;
 
-	struct list_head *current;
+	struct list_head *current_item;
 	struct lock_entry *entry;
-	list_for_each(current, &granted_list) {
+	list_for_each(current_item, &granted_list) {
 		entry = list_entry(current, struct lock_entry, granted_list);
 		if (range_equals(korient, entry->range) &&
 		    entry->type == WRITER_ENTRY)
@@ -221,7 +224,7 @@ SYSCALL_DEFINE1(orientunlock_write, struct orientation_range __user *, orient)
 		else
 			; //no locks with the orientation_range available
 	}
-	list_del(current);
+	list_del(current_item);
 	kfree(entry->range);
 	kfree(entry);
 	return 0;
