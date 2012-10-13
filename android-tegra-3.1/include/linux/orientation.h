@@ -40,7 +40,7 @@ struct lock_entry {
 LIST_HEAD(waiters_list);
 LIST_HEAD(granted_list);
 
-spinlock_t WAITERS_LOCK = 0;
+spinlock_t WAITERS_LOCK;
 
 DECLARE_WAIT_QUEUE_HEAD(sleepers);
 
