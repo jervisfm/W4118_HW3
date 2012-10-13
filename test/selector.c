@@ -70,13 +70,13 @@ int main(int argc, char **argv) {
 
 	while (1) {
 		/* Take the write lock */
-		orientlock_write(&write_lock);
+		orient_write_lock(&write_lock);
 
 		FILE *integer_file = fopen(filename, "w");
 		fprintf(integer_file, "%d", counter);
 
 		/* Release write lock */
-		orientunlock_write(&write_lock);
+		orient_write_unlock(&write_lock);
 		++counter;
 		fclose(integer_file);
 	}
