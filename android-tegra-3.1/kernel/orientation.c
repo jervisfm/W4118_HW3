@@ -166,7 +166,7 @@ SYSCALL_DEFINE1(orientlock_write, struct orientation_range __user *, orient)
 
 	entry = kmalloc(sizeof(entry), GFP_KERNEL);
 	entry->range = korient;
-	entry->granted = 0;
+	atomic_set(&entry->granted, 0);
 	INIT_LIST_HEAD(&entry->list);
 	INIT_LIST_HEAD(&entry->granted_list);
 	entry->type = WRITER_ENTRY;
@@ -213,13 +213,14 @@ SYSCALL_DEFINE1(orientunlock_write, struct orientation_range __user *, orient)
 {
 	//TODO: Remember to free lock_entry and range
 	struct orientation_range korient;
+	struct list_head *current_item;
+	struct lock_entry *entry;
+
 	if (copy_from_user(&korient, orient, sizeof(struct orientation_range)) != 0)
 		return -EFAULT;
 
-	struct list_head *current_item;
-	struct lock_entry *entry;
 	list_for_each(current_item, &granted_list) {
-		entry = list_entry(current, struct lock_entry, granted_list);
+		entry = list_entry(current_item, struct lock_entry, granted_list);
 		if (range_equals(&korient, entry->range) &&
 		    entry->type == WRITER_ENTRY)
 			break;
