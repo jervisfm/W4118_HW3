@@ -31,7 +31,7 @@ erminated using ctrl+c by the user. Before releasing the write lock, you should
  */
 
 
-/*
+/* DELETE  THIS LATER
  * Defines orientation range. The ranges give the "width" of
  * the range. If one of the range values is 0, it is not considered
  * as defining the range (ignored).

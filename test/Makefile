@@ -1,22 +1,26 @@
-CROSS_COMPILE ? =
-CC := $(CROSS_COMPILE)gcc
-LD := $(CROSS_COMPILE)ld
-CFLAGS := -Wall -Werror -g -I../tools/gmp/include
+CROSS_COMPILE = arm-none-linux-gnueabi-gcc
+CC := $(CROSS_COMPILE)
+LD := $(CROSS_COMPILE)
+CFLAGS :=  -Wall -Werror -g -I../tools/gmp/include
 LDFLAGS := -L../tools/gmp/lib -lgmp -lm -static
-
+ORIENT_OBJ = orient_lock.o
 
 all: trial pollard selector
 
 
-trial: trial.c
-	$(CC) -o $@ $< $(CFLAGS) $(LDFLAGS)
+trial: trial.c orient_lock
+	$(CC) -o $@ $< $(ORIENT_OBJ) $(CFLAGS) $(LDFLAGS)
 
 pollard: pollard.c
 	$(CC) -o $@ $< $(CFLAGS) $(LDFLAGS)
 
-selector: selector.c
+selector: selector.c orient_lock.o
+	$(CC) -o $@ $(ORIENT_OBJ) $< $(CFLAGS) $(LDFLAGS)
+
+orient_lock: orient_lock.c
+	$(CC) -c $@.c $< $(CFLAGS) $(LDFLAGS)
 
 clean:
-	rm -f pollard.o trial.o selector.o trial pollard selector
+	rm -f pollard.o trial.o selector.o orient_lock.o trial pollard selector
 
 .PHONY: clean
