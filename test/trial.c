@@ -75,8 +75,9 @@ static int read_integer(mpz_ptr result) {
 	read_lock.roll_range = 10;
 	read_lock.pitch_range = 10;
 
+	printf("Attempting to take read lock...");
 	orient_read_lock(&read_lock);
-
+	printf("Acquired ! \n");
 	FILE *integer_file = fopen(filename, "r");
 	if (integer_file == NULL) {
 		ret_code = 0;
@@ -91,7 +92,9 @@ static int read_integer(mpz_ptr result) {
 		ret_code = 0;
 	}
 	fclose(integer_file);
+	printf("Attempting to release read lock...");
 	orient_read_unlock(&read_lock);
+	printf("Released ! \n");
 	return ret_code;
 }
 

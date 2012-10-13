@@ -70,13 +70,17 @@ int main(int argc, char **argv) {
 
 	while (1) {
 		/* Take the write lock */
+		printf("Attempting to take write lock...");
 		orient_write_lock(&write_lock);
+		printf(" Acquired !\n");
 
 		FILE *integer_file = fopen(filename, "w");
 		fprintf(integer_file, "%d", counter);
 
 		/* Release write lock */
+		printf("Attempting to release write lock...");
 		orient_write_unlock(&write_lock);
+		printf(" Released !\n");
 		++counter;
 		fclose(integer_file);
 	}

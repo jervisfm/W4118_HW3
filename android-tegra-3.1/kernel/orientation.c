@@ -114,6 +114,8 @@ SYSCALL_DEFINE1(set_orientation, struct dev_orientation __user *, orient)
 				sizeof(struct dev_orientation)) != 0)
 		return -EFAULT;
 
+	// TODO: We need to automatically release locks for processes
+	// that took a lock and died, without releasing the lock.
 	list_for_each(current_item, &waiters_list)
 		process_waiter(current_item);
 
@@ -189,7 +191,7 @@ SYSCALL_DEFINE1(orientunlock_read, struct orientation_range __user *, orient)
 {
 	struct orientation_range korient;
 	struct list_head *current_item;
-	struct lock_entry *entry;
+	struct lock_entry *entry = NULL;
 
 	if (copy_from_user(&korient, orient, sizeof(struct orientation_range)) != 0)
 		return -EFAULT;
@@ -214,13 +216,14 @@ SYSCALL_DEFINE1(orientunlock_write, struct orientation_range __user *, orient)
 	//TODO: Remember to free lock_entry and range
 	struct orientation_range korient;
 	struct list_head *current_item;
-	struct lock_entry *entry;
+	struct lock_entry *entry = NULL;
 
 	if (copy_from_user(&korient, orient, sizeof(struct orientation_range)) != 0)
 		return -EFAULT;
 
 	list_for_each(current_item, &granted_list) {
-		entry = list_entry(current_item, struct lock_entry, granted_list);
+		entry = list_entry(current_item,
+				   struct lock_entry, granted_list);
 		if (range_equals(&korient, entry->range) &&
 		    entry->type == WRITER_ENTRY)
 			break;
