@@ -51,9 +51,7 @@ int no_writer_waiting(struct orientation_range *target)
 {
 	int rc;
 	printk("About to acquire lock 53");
-	spin_lock(&WAITERS_LOCK);
 	rc = generic_search_list(target, &waiters_list, 1);
-	spin_unlock(&WAITERS_LOCK);
 	return rc;
 }
 
