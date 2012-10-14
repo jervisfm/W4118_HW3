@@ -66,6 +66,10 @@ void grant_lock(struct lock_entry *entry)
 {
 	printk("Setting atomic ...");
 	atomic_set(&entry->granted,1);
+	// TODO: wake up the sleeping task the right way.
+	// snippet below causes a crash.
+	wake_up(&sleepers);
+
 	printk("Done\n");
 
 	printk("Adding to grant list...");
@@ -225,7 +229,9 @@ SYSCALL_DEFINE1(set_orientation, struct dev_orientation __user *, orient)
 		}
 		printk("Addr=%p\n", current_item);
 		process_waiter(current_item);
+		printk("Finished iteration %d" , counter);
 	}
+	printk("About to return set_orient\n");
 	// print_orientation(current_orient);
 
 	return 0;
