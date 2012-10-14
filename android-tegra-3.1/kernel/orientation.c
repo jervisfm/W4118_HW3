@@ -119,7 +119,7 @@ SYSCALL_DEFINE1(set_orientation, struct dev_orientation __user *, orient)
 	list_for_each(current_item, &waiters_list)
 		process_waiter(current_item);
 
-	print_orientation(current_orient);
+	// print_orientation(current_orient);
 
 	return 0;
 }
