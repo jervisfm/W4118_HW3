@@ -124,18 +124,22 @@ static int in_range(struct orientation_range *range,
 	int range_pitch = (int) range->pitch_range;
 	int range_roll = (int) range->roll_range;
 
-	if(orient.azimuth > basis_azimuth + range_azimuth) {
+	if(orient.azimuth > basis_azimuth + range_azimuth
+			&& range_azimuth != 0) {
 		return 0;
 	}
-	if(orient.azimuth < basis_azimuth - range_azimuth) {
+	if(orient.azimuth < basis_azimuth - range_azimuth
+				&& range_azimuth != 0) {
 		return 0;
 	}
-	if(orient.pitch > basis_pitch + range_pitch ||
-			orient.pitch < basis_pitch - range_pitch) {
+	if((orient.pitch > basis_pitch + range_pitch ||
+			orient.pitch < basis_pitch - range_pitch)
+			&& range_pitch != 0) {
 		return 0;
 	}
-	if(orient.roll > basis_roll + range_roll ||
-	   orient.roll < basis_roll - range_roll) {
+	if((orient.roll > basis_roll + range_roll ||
+	   orient.roll < basis_roll - range_roll)
+	   && range_roll != 0) {
 		return 0;
 	}
 
