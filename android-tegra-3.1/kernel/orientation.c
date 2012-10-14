@@ -122,59 +122,19 @@ int in_range(struct orientation_range *range, struct dev_orientation orient)
 	int range_pitch = (int) range->pitch_range;
 	int range_roll = (int) range->roll_range;
 
-	printk("RA: %d R: %d RR: %d\n", range_azimuth, range_pitch, range_roll);
-
-	/* TODO: Make this implementation more robust by making it handle
-		 * wrap arounds properly */
-
-	/* Computed the adjusted values given by the target yet
-	 * and rebase them to a scale in which 0 is the minimum if necessary */
-	int adj_max_azimuth = adjust_orientation(basis_azimuth + range_azimuth,
-					         MIN_AZIMUTH, MAX_AZIMUTH);
-	int adj_min_azimuth = adjust_orientation(basis_azimuth - range_azimuth,
-						 MIN_AZIMUTH, MAX_AZIMUTH);
-	int adj_max_pitch = adjust_orientation(basis_pitch + range_pitch,
-			     	     	       MIN_PITCH, MAX_PITCH);
-	int adj_min_pitch = adjust_orientation(basis_pitch - range_pitch,
-					       MIN_PITCH, MAX_PITCH) ;
-	int adj_min_roll = adjust_orientation(basis_roll - range_roll,
-			 	 	      MIN_ROLL, MAX_ROLL);
-	int adj_max_roll = adjust_orientation(basis_roll + range_roll,
-					      MIN_ROLL, MAX_ROLL);
-
-	int adj_azimuth = orient.azimuth; /* azimuth already 0-360*/
-	int adj_pitch = orient.pitch;
-	int adj_roll = orient.roll ;
-
-	if (adj_azimuth > adj_max_azimuth ||
-	    adj_azimuth < adj_min_azimuth) {
-		if(adj_azimuth > adj_max_azimuth)
-			printk("Azimuth fail1: %d vs %d", adj_azimuth, adj_max_azimuth);
-		else
-			printk("Azimuth fail2: %d vs %d", adj_azimuth, adj_min_azimuth);
-		printk("Azimuth fail");
+	if(orient.azimuth > basis_azimuth + range_azimuth ||
+	   orient.azimuth < basis_azimuth - range_azimuth) {
+		printk("Fail Azimuth\n");
 		return 0;
 	}
-
-
-	if (adj_pitch > adj_max_pitch ||
-	    adj_pitch < adj_min_pitch) {
-		if(adj_pitch > adj_max_pitch)
-			printk("Pitch fail 1: %d vs %d", adj_pitch, adj_max_pitch);
-		else
-			printk("Pitch fail 1: %d vs %d", adj_pitch, adj_min_pitch);
+	if(orient.pitch > basis_pitch + range_pitch ||
+			orient.pitch < basis_pitch - range_pitch) {
+		printk("Fail Pitch\n");
 		return 0;
 	}
-
-
-	if (adj_roll > adj_max_roll ||
-	    adj_roll < adj_min_roll) {
-		if(adj_roll > adj_max_roll)
-			printk("Roll Fail 1: %d vs %d", adj_roll, adj_max_roll);
-		else
-			printk("Roll Fail 2: %d vs %d", adj_roll, adj_min_roll);
-
-		printk("roll fail");
+	if(orient.roll > basis_roll + range_roll ||
+	   orient.roll < basis_roll - range_roll) {
+		printk("Fail orient\n");
 		return 0;
 	}
 
