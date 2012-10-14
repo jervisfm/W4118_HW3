@@ -52,7 +52,8 @@ LIST_HEAD(waiters_list);
 LIST_HEAD(granted_list);
 
 spinlock_t WAITERS_LOCK;
+spinlock_t GRANTED_LOCK;
+spinlock_t SET_LOCK;
 
 DECLARE_WAIT_QUEUE_HEAD(sleepers);
-
 #endif /* _LINUX_ORIENTATION_H */

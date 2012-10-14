@@ -49,17 +49,43 @@ int generic_search_list(struct orientation_range *target,
 
 int no_writer_waiting(struct orientation_range *target)
 {
-	return generic_search_list(target, &waiters_list, 1);
+	int rc;
+	printk("About to acquire lock 53");
+	spin_lock(&WAITERS_LOCK);
+	rc = generic_search_list(target, &waiters_list, 1);
+	spin_unlock(&WAITERS_LOCK);
+	return rc;
 }
 
 int no_writer_grabbed(struct orientation_range *target)
-{
-	return generic_search_list(target, &granted_list, 1);
+{	
+	int rc;
+	printk("About to acquire lock 63");
+	spin_lock(&GRANTED_LOCK);
+	rc = generic_search_list(target, &granted_list, 1);
+	spin_unlock(&GRANTED_LOCK);
+	return rc;
 }
 
 int no_reader_grabbed(struct orientation_range *target)
 {
-	return generic_search_list(target, &granted_list, 0);
+	int rc;
+	printk("About to acquire lock 73");
+	spin_lock(&GRANTED_LOCK);
+	rc = generic_search_list(target, &granted_list, 0);
+	spin_unlock(&GRANTED_LOCK);
+	return rc;
+}
+
+int list_size(struct list_head *head) {
+	if (head == NULL)
+		return 0;
+	int size = 0;
+	struct list_head *curr = head->next;
+	for (curr = head->next; curr != head; curr = curr->next) {
+		++size;
+	}
+	return size;
 }
 
 void grant_lock(struct lock_entry *entry)
@@ -68,15 +94,20 @@ void grant_lock(struct lock_entry *entry)
 	atomic_set(&entry->granted,1);
 	// TODO: wake up the sleeping task the right way.
 	// snippet below causes a crash.
+
 	wake_up(&sleepers);
 
 	printk("Done\n");
 
-	printk("Adding to grant list...");
+	printk("Adding to grant list... size %d", list_size(&granted_list));
+	printk("About to acquire lock 103");
+	spin_lock(&GRANTED_LOCK);
 	list_add_tail(&entry->granted_list, &granted_list);
-	printk("Done\n");
+	spin_unlock(&GRANTED_LOCK);
+	printk("Done, size %d\n", list_size(&granted_list));
 
 	printk("Getting spink lock...");
+	printk("About to acquire lock 110");
 	spin_lock(&WAITERS_LOCK);
 	printk("Acquired\n");
 
@@ -191,6 +222,11 @@ void process_waiter(struct list_head *current_item)
 		}
 		else { /* Writer */
 			printk("In the writer blockl\n");
+			if (!no_writer_grabbed(target))
+				printk("Writer grabbed\n");
+
+			if (!no_reader_grabbed(target))
+				printk("Reader grabbed\n");
 
 			if (no_writer_grabbed(target) &&
 			    no_reader_grabbed(target)) {
@@ -203,9 +239,10 @@ void process_waiter(struct list_head *current_item)
 	printk("Process waiter completed\n");
 }
 
-/* TODO: Do we really need __user in our definitions ??? */
 SYSCALL_DEFINE1(set_orientation, struct dev_orientation __user *, orient)
 {
+	printk("About to acquire lock 244");
+	spin_lock(&SET_LOCK);
 	struct list_head *current_item;
 	struct list_head *next_item;
 	int counter = 0;
@@ -216,7 +253,9 @@ SYSCALL_DEFINE1(set_orientation, struct dev_orientation __user *, orient)
 
 	// TODO: We need to automatically release locks for processes
 	// that took a lock and died, without releasing the lock.
-
+	
+	printk("About to acquire lock 257");
+	spin_lock(&WAITERS_LOCK);
 	list_for_each_safe(current_item, next_item, &waiters_list) {
 		int cpu_id = task_cpu(current);
 		++counter;
@@ -231,9 +270,10 @@ SYSCALL_DEFINE1(set_orientation, struct dev_orientation __user *, orient)
 		process_waiter(current_item);
 		printk("Finished iteration %d" , counter);
 	}
+	spin_unlock(&WAITERS_LOCK);
 	printk("About to return set_orient\n");
 	// print_orientation(current_orient);
-
+	spin_unlock(&SET_LOCK);
 	return 0;
 }
 
@@ -255,6 +295,7 @@ SYSCALL_DEFINE1(orientlock_read, struct orientation_range __user *, orient)
 	INIT_LIST_HEAD(&entry->granted_list);
 	entry->type = READER_ENTRY;
 
+	printk("About to acquire lock 298");
 	spin_lock(&WAITERS_LOCK);
 	list_add_tail(&entry->list, &waiters_list);
 	spin_unlock(&WAITERS_LOCK);
@@ -275,10 +316,12 @@ SYSCALL_DEFINE1(orientlock_write, struct orientation_range __user *, orient)
 	struct orientation_range *korient;
 	struct lock_entry *entry;
 	DEFINE_WAIT(wait);
-	
+
+	printk("Before");
 	korient = kmalloc(sizeof(struct orientation_range), GFP_KERNEL);
 	if (copy_from_user(korient, orient, sizeof(struct orientation_range)) != 0)
 		return -EFAULT;
+	printk("After");
 
 	entry = kmalloc(sizeof(entry), GFP_KERNEL);
 	entry->range = korient;
@@ -286,16 +329,22 @@ SYSCALL_DEFINE1(orientlock_write, struct orientation_range __user *, orient)
 	INIT_LIST_HEAD(&entry->list);
 	INIT_LIST_HEAD(&entry->granted_list);
 	entry->type = WRITER_ENTRY;
-	
+
+
+	printk("Adding to waiters: size %d\n", list_size(&waiters_list));
+	printk("About to acquire lock 333");
 	spin_lock(&WAITERS_LOCK);
 	list_add_tail(&entry->list, &waiters_list);
 	spin_unlock(&WAITERS_LOCK);
+	printk("Addto waiters: size %d\n", list_size(&waiters_list));
 
 	add_wait_queue(&sleepers, &wait);
+	printk("Added to wait queue");
 	while(!atomic_read(&entry->granted)) {
 		prepare_to_wait(&sleepers, &wait, TASK_INTERRUPTIBLE);
 		schedule();
 	}
+	printk("Waking up");
 	finish_wait(&sleepers, &wait);
 	return 0;
 }
@@ -309,6 +358,8 @@ SYSCALL_DEFINE1(orientunlock_read, struct orientation_range __user *, orient)
 	if (copy_from_user(&korient, orient, sizeof(struct orientation_range)) != 0)
 		return -EFAULT;
 	
+	printk("About to acquire lock 358");
+	spin_lock(&GRANTED_LOCK);
 	list_for_each(current_item, &granted_list) {
 		entry = list_entry(current_item,
 				   struct lock_entry, granted_list);
@@ -319,6 +370,7 @@ SYSCALL_DEFINE1(orientunlock_read, struct orientation_range __user *, orient)
 			; //no locks with the orientation_range available
 	}
 	list_del(current_item);
+	spin_unlock(&GRANTED_LOCK);
 	kfree(entry->range);
 	kfree(entry);
 	return 0;
@@ -326,25 +378,30 @@ SYSCALL_DEFINE1(orientunlock_read, struct orientation_range __user *, orient)
 
 SYSCALL_DEFINE1(orientunlock_write, struct orientation_range __user *, orient)
 {
-	//TODO: Remember to free lock_entry and range
 	struct orientation_range korient;
-	struct list_head *current_item;
-	struct lock_entry *entry = NULL;
+	struct list_head *current_item, *next_item;
 
 	if (copy_from_user(&korient, orient, sizeof(struct orientation_range)) != 0)
 		return -EFAULT;
-
-	list_for_each(current_item, &granted_list) {
+	
+	printk("About to acquire lock 384");
+	spin_lock(&GRANTED_LOCK);
+	list_for_each_safe(current_item, next_item, &granted_list) {
+		struct lock_entry *entry;
 		entry = list_entry(current_item,
 				   struct lock_entry, granted_list);
 		if (range_equals(&korient, entry->range) &&
-		    entry->type == WRITER_ENTRY)
-			break;
+		    entry->type == WRITER_ENTRY) {
+			list_del(current_item);
+			kfree(entry->range);
+			kfree(entry);
+			spin_unlock(&GRANTED_LOCK);
+			return 0;
+		}	
 		else
 			; //no locks with the orientation_range available
 	}
-	list_del(current_item);
-	kfree(entry->range);
-	kfree(entry);
+	spin_unlock(&GRANTED_LOCK);
+	printk("SOUND THE ALARM\n");
 	return 0;
 }
