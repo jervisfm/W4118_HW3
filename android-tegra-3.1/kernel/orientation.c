@@ -64,11 +64,25 @@ int no_reader_grabbed(struct orientation_range *target)
 
 void grant_lock(struct lock_entry *entry)
 {
+	printk("Setting atomic ...");
 	atomic_set(&entry->granted,1);
+	printk("Done\n");
+
+	printk("Adding to grant list...");
 	list_add_tail(&entry->granted_list, &granted_list);
+	printk("Done\n");
+
+	printk("Getting spink lock...");
 	spin_lock(&WAITERS_LOCK);
+	printk("Acquired\n");
+
+	printk("Deleting entry...");
 	list_del(&entry->list);
+	printk("Doone\n");
+
+	printk("Unlocking lock...");
 	spin_unlock(&WAITERS_LOCK);
+	printk("Unlocked\n");
 }
 
 
@@ -122,9 +136,12 @@ int in_range(struct orientation_range *range, struct dev_orientation orient)
 	int range_pitch = (int) range->pitch_range;
 	int range_roll = (int) range->roll_range;
 
-	if(orient.azimuth > basis_azimuth + range_azimuth ||
-	   orient.azimuth < basis_azimuth - range_azimuth) {
-		printk("Fail Azimuth\n");
+	if(orient.azimuth > basis_azimuth + range_azimuth) {
+		printk("Fail Azimuth1: %d > %d\n", orient.azimuth, basis_azimuth + range_azimuth);
+		return 0;
+	}
+	if(orient.azimuth < basis_azimuth - range_azimuth) {
+		printk("Fail Azimuth2: %d < %d\n", orient.azimuth, basis_azimuth - range_azimuth);
 		return 0;
 	}
 	if(orient.pitch > basis_pitch + range_pitch ||
@@ -155,9 +172,16 @@ void process_waiter(struct list_head *current_item)
 		}
 		else { /* Writer */
 			printk("In the writer blockl\n");
+			if(target == NULL) {
+				printk("Target is NULL");
+			}
+
 			if (no_writer_grabbed(target) &&
-			    no_reader_grabbed(target))
+			    no_reader_grabbed(target)) {
+				printk("About to grant lock");
 				grant_lock(entry);
+			}
+
 		}
 	}
 }
