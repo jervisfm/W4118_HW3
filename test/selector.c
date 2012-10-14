@@ -53,7 +53,7 @@ int main(int argc, char **argv) {
 		exit(-1);
 	}
 	counter = atoi(argv[1]);
-
+	printf("Stepping up orient structs...\n");
 	struct orientation_range write_lock;
 	/* Only want this to work when device is lying facedown */
 	struct dev_orientation write_lock_orient;
@@ -68,9 +68,13 @@ int main(int argc, char **argv) {
 
 	const char *filename = FILENAME;
 
+	printf("About to enter while loop...\n");
+	/* Disbale buffering on stdout */
+	setvbuf(stdout, NULL, _IONBF, 0);
 	while (1) {
 		/* Take the write lock */
 		printf("Attempting to take write lock...");
+
 		orient_write_lock(&write_lock);
 		printf(" Acquired !\n");
 
@@ -85,4 +89,6 @@ int main(int argc, char **argv) {
 		++counter;
 		fclose(integer_file);
 	}
+	printf("Exited while loop");
+	return 0;
 }

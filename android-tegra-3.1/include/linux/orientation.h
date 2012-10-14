@@ -6,12 +6,20 @@
 #include <linux/spinlock.h>
 #include <linux/types.h>
 #include <asm/atomic.h>
-// #include <linux/kernel.h>
+#include <linux/kernel.h>
 #include <linux/slab.h>
 
 /* Types for lock entry */
 #define READER_ENTRY 0
 #define WRITER_ENTRY 1
+
+/* Orientation range vallue constants */
+#define MIN_PITCH -180
+#define MAX_PITCH 180
+#define MIN_ROLL -90
+#define MAX_ROLL 90
+#define MIN_AZIMUTH 0
+#define MAX_AZIMUTH 360
 
 struct dev_orientation {
 	int azimuth; /* angle between the magnetic north

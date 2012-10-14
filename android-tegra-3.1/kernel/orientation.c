@@ -71,18 +71,157 @@ void grant_lock(struct lock_entry *entry)
 	spin_unlock(&WAITERS_LOCK);
 }
 
+/*
+ * Returns the adjusted value of the orientation number so that
+ * it falls within the given range.
+ */
+int adjust_orientation(int num, int min_val, int max_val)
+{
+	int range = abs((max_val - min_val));
+	if(min_val >= 0) {
+		int pos_range = max_val - min_val;
+		return num % pos_range;
+	}
+
+	if(num > max_val) {
+		int diff = max_val - num;
+		int in_range_diff = diff % range;
+		return min_val + in_range_diff;
+	} else if (num < min_val) {
+		int diff = min_val - num;
+		int in_range_diff = diff % range;
+		return max_val - in_range_diff;
+	} else { /* number is in range */
+		return num;
+	}
+}
+
+/* *
+ * Determines if a wrap around has occured.
+ *
+ */
+int wrapped_around(int min, int max) {
+
+	/*
+	 * When you have a wrap around,
+	 * the max becomes less than the min.
+	 */
+
+	if(max < min)
+		return 1;
+	else
+		return 0;
+}
+
 int in_range(struct orientation_range *range, struct dev_orientation orient)
 {
 	struct dev_orientation basis = range->orient;
-	if (orient.azimuth > basis.azimuth + range->azimuth_range ||
-	    orient.azimuth < basis.azimuth - range->azimuth_range)
-		return 0;
-	if (orient.pitch > basis.pitch + range->pitch_range ||
-	    orient.pitch < basis.pitch - range->pitch_range)
-		return 0;
-	if (orient.roll > basis.roll + range->roll_range ||
-	    orient.roll < basis.roll - range->roll_range)
-		return 0;
+
+	const int pitch_range = MAX_PITCH;
+	const int roll_range = MAX_ROLL;
+
+	int basis_azimuth = basis.azimuth;
+	int basis_pitch = basis.pitch;
+	int basis_roll = basis.roll;
+
+	int range_azimuth = (int) range->azimuth_range;
+	int range_pitch = (int) range->pitch_range;
+	int range_roll = (int) range->roll_range;
+
+	/* Computed the adjusted values given by the target yet
+	 * and rebase them to a scale in which 0 is the minimum if necessary */
+	int adj_max_azimuth = adjust_orientation(basis_azimuth + range_azimuth,
+					         MIN_AZIMUTH, MAX_AZIMUTH);
+	int adj_min_azimuth = adjust_orientation(basis_azimuth - range_azimuth,
+						 MIN_AZIMUTH, MAX_AZIMUTH);
+
+	int adj_max_pitch = adjust_orientation(basis_pitch + range_pitch,
+			     	     	       MIN_PITCH, MAX_PITCH) +
+			    pitch_range;
+	int adj_min_pitch = adjust_orientation(basis_pitch - range_pitch,
+					       MIN_PITCH, MAX_PITCH) +
+			    pitch_range;
+	int adj_min_roll = adjust_orientation(basis_roll - range_roll,
+			 	 	      MIN_ROLL, MAX_ROLL) +
+			   roll_range;
+	int adj_max_roll = adjust_orientation(basis_roll + range_roll,
+					      MIN_ROLL, MAX_ROLL) +
+			   roll_range;
+
+	/* Rebase the current orientation so that 0 is the min val
+	 * to be consisted with the adjusted ranges.
+	 */
+	int adj_azimuth = orient.azimuth; /* azimuth already 0-360*/
+	int adj_pitch = orient.pitch + pitch_range;
+	int adj_roll = orient.roll + roll_range;
+
+	if(wrapped_around(adj_min_azimuth, adj_max_azimuth)) {
+		if (adj_azimuth > adj_min_azimuth ||
+		    adj_azimuth < adj_max_azimuth) {
+			if(adj_azimuth > adj_max_azimuth)
+				printk("W-Azimuth fail1: %d vs %d", adj_azimuth, adj_max_azimuth);
+			else
+				printk("W-Azimuth fail2: %d vs %d", adj_azimuth, adj_min_azimuth);
+			printk("Azimuth fail");
+			return 0;
+		}
+	} else {
+		if (adj_azimuth > adj_max_azimuth ||
+		    adj_azimuth < adj_min_azimuth) {
+			if(adj_azimuth > adj_max_azimuth)
+				printk("Azimuth fail1: %d vs %d", adj_azimuth, adj_max_azimuth);
+			else
+				printk("Azimuth fail2: %d vs %d", adj_azimuth, adj_min_azimuth);
+			printk("Azimuth fail");
+			return 0;
+		}
+	}
+
+	if(wrapped_around(adj_min_pitch, adj_max_pitch)) {
+		if (adj_pitch > adj_min_pitch ||
+		    adj_pitch < adj_max_pitch) {
+			if(adj_pitch > adj_max_pitch)
+				printk("W-Pitch fail 1: %d vs %d", adj_pitch, adj_max_pitch);
+			else
+				printk("W-Pitch fail 1: %d vs %d", adj_pitch, adj_min_pitch);
+			return 0;
+		}
+	} else {
+		if (adj_pitch > adj_max_pitch ||
+		    adj_pitch < adj_min_pitch) {
+			if(adj_pitch > adj_max_pitch)
+				printk("Pitch fail 1: %d vs %d", adj_pitch, adj_max_pitch);
+			else
+				printk("Pitch fail 1: %d vs %d", adj_pitch, adj_min_pitch);
+			return 0;
+		}
+	}
+
+	if(wrapped_around(adj_min_roll, adj_max_roll)) {
+		if (adj_roll > adj_min_roll ||
+		    adj_roll < adj_max_roll) {
+			if(adj_roll > adj_max_roll)
+				printk("W-Roll Fail 1: %d vs %d", adj_roll, adj_max_roll);
+			else
+				printk("W-Roll Fail 2: %d vs %d", adj_roll, adj_min_roll);
+
+			printk("roll fail");
+			return 0;
+		}
+	} else {
+		if (adj_roll > adj_max_roll ||
+		    adj_roll < adj_min_roll) {
+			if(adj_roll > adj_max_roll)
+				printk("Roll Fail 1: %d vs %d", adj_roll, adj_max_roll);
+			else
+				printk("Roll Fail 2: %d vs %d", adj_roll, adj_min_roll);
+
+			printk("roll fail");
+			return 0;
+		}
+	}
+
+
 	return 1;
 }
 
@@ -92,12 +231,14 @@ void process_waiter(struct list_head *current_item)
 					      struct lock_entry, list);
 	struct orientation_range *target = entry->range;
 	if (in_range(entry->range, current_orient)) {
+		printk("We are in range !!!\n");
 		if (entry->type == READER_ENTRY) { /* Reader */
 			if (no_writer_waiting(target) &&
 			   no_writer_grabbed(target))
 				grant_lock(entry);
 		}
 		else { /* Writer */
+			printk("In the writer blockl\n");
 			if (no_writer_grabbed(target) &&
 			    no_reader_grabbed(target))
 				grant_lock(entry);
@@ -116,6 +257,7 @@ SYSCALL_DEFINE1(set_orientation, struct dev_orientation __user *, orient)
 
 	// TODO: We need to automatically release locks for processes
 	// that took a lock and died, without releasing the lock.
+
 	list_for_each(current_item, &waiters_list)
 		process_waiter(current_item);
 
@@ -177,7 +319,6 @@ SYSCALL_DEFINE1(orientlock_write, struct orientation_range __user *, orient)
 	list_add_tail(&entry->list, &waiters_list);
 	spin_unlock(&WAITERS_LOCK);
 
-	
 	add_wait_queue(&sleepers, &wait);
 	while(!atomic_read(&entry->granted)) {
 		prepare_to_wait(&sleepers, &wait, TASK_INTERRUPTIBLE);
