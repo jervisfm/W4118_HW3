@@ -137,11 +137,11 @@ int in_range(struct orientation_range *range, struct dev_orientation orient)
 	int range_roll = (int) range->roll_range;
 
 	if(orient.azimuth > basis_azimuth + range_azimuth) {
-		printk("Fail Azimuth1: %d > %d\n", orient.azimuth, basis_azimuth + range_azimuth);
+		printk("Fail Azimuth1: %d > %d +  %d\n", orient.azimuth, basis_azimuth,range_azimuth);
 		return 0;
 	}
 	if(orient.azimuth < basis_azimuth - range_azimuth) {
-		printk("Fail Azimuth2: %d < %d\n", orient.azimuth, basis_azimuth - range_azimuth);
+		printk("Fail Azimuth2: %d < %d - %d\n", orient.azimuth, basis_azimuth,range_azimuth);
 		return 0;
 	}
 	if(orient.pitch > basis_pitch + range_pitch ||
@@ -160,9 +160,24 @@ int in_range(struct orientation_range *range, struct dev_orientation orient)
 
 void process_waiter(struct list_head *current_item)
 {
+	printk("In Process Waiter\n");
+	if(current_item == NULL) {
+		printk("Item is NULL");
+	}
+
+	printk("About to do list entry...\n");
 	struct lock_entry *entry = list_entry(current_item,
 					      struct lock_entry, list);
+	if(entry == NULL) {
+		printk("entry NULL");
+	}
+
 	struct orientation_range *target = entry->range;
+
+	if(target ==NULL) {
+		printk("target is NULL");
+	}
+
 	if (in_range(entry->range, current_orient)) {
 		printk("We are in range !!!\n");
 		if (entry->type == READER_ENTRY) { /* Reader */
@@ -172,9 +187,6 @@ void process_waiter(struct list_head *current_item)
 		}
 		else { /* Writer */
 			printk("In the writer blockl\n");
-			if(target == NULL) {
-				printk("Target is NULL");
-			}
 
 			if (no_writer_grabbed(target) &&
 			    no_reader_grabbed(target)) {
@@ -184,12 +196,15 @@ void process_waiter(struct list_head *current_item)
 
 		}
 	}
+	printk("Process waiter completed\n");
 }
 
 /* TODO: Do we really need __user in our definitions ??? */
 SYSCALL_DEFINE1(set_orientation, struct dev_orientation __user *, orient)
 {
 	struct list_head *current_item;
+	struct list_head *next_item;
+	int counter = 0;
 	//TODO: Lock set_orientation for multiprocessing
 	if (copy_from_user(&current_orient, orient,
 				sizeof(struct dev_orientation)) != 0)
@@ -198,9 +213,19 @@ SYSCALL_DEFINE1(set_orientation, struct dev_orientation __user *, orient)
 	// TODO: We need to automatically release locks for processes
 	// that took a lock and died, without releasing the lock.
 
-	list_for_each(current_item, &waiters_list)
-		process_waiter(current_item);
+	list_for_each_safe(current_item, next_item, &waiters_list) {
+		int cpu_id = task_cpu(current);
+		++counter;
+		printk("Doing Item %d\n", counter);
 
+		printk("Running on CPU: %d", cpu_id);
+
+		if(current_item == NULL) {
+			printk("Null waiter list item\n");
+		}
+		printk("Addr=%p\n", current_item);
+		process_waiter(current_item);
+	}
 	// print_orientation(current_orient);
 
 	return 0;
