@@ -57,7 +57,7 @@ int main(int argc, char **argv) {
 	struct orientation_range write_lock;
 	/* Only want this to work when device is lying facedown */
 	struct dev_orientation write_lock_orient;
-	write_lock_orient.azimuth = 0;
+	write_lock_orient.azimuth = 180;
 	write_lock_orient.pitch = 180;
 	write_lock_orient.roll = 0;
 

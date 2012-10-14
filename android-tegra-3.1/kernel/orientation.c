@@ -71,26 +71,20 @@ void grant_lock(struct lock_entry *entry)
 	spin_unlock(&WAITERS_LOCK);
 }
 
+
 /*
  * Returns the adjusted value of the orientation number so that
- * it falls within the given range.
+ * it falls within the given range. i.e. if out of range
+ * use the min/max values.
  */
 int adjust_orientation(int num, int min_val, int max_val)
 {
 	int range = abs((max_val - min_val));
-	if(min_val >= 0) {
-		int pos_range = max_val - min_val;
-		return num % pos_range;
-	}
-
 	if(num > max_val) {
-		int diff = max_val - num;
-		int in_range_diff = diff % range;
-		return min_val + in_range_diff;
+		printk("Max val: %d\n", max_val);
+		return max_val;
 	} else if (num < min_val) {
-		int diff = min_val - num;
-		int in_range_diff = diff % range;
-		return max_val - in_range_diff;
+		return min_val;
 	} else { /* number is in range */
 		return num;
 	}
@@ -128,99 +122,61 @@ int in_range(struct orientation_range *range, struct dev_orientation orient)
 	int range_pitch = (int) range->pitch_range;
 	int range_roll = (int) range->roll_range;
 
+	printk("RA: %d R: %d RR: %d\n", range_azimuth, range_pitch, range_roll);
+
+	/* TODO: Make this implementation more robust by making it handle
+		 * wrap arounds properly */
+
 	/* Computed the adjusted values given by the target yet
 	 * and rebase them to a scale in which 0 is the minimum if necessary */
 	int adj_max_azimuth = adjust_orientation(basis_azimuth + range_azimuth,
 					         MIN_AZIMUTH, MAX_AZIMUTH);
 	int adj_min_azimuth = adjust_orientation(basis_azimuth - range_azimuth,
 						 MIN_AZIMUTH, MAX_AZIMUTH);
-
 	int adj_max_pitch = adjust_orientation(basis_pitch + range_pitch,
-			     	     	       MIN_PITCH, MAX_PITCH) +
-			    pitch_range;
+			     	     	       MIN_PITCH, MAX_PITCH);
 	int adj_min_pitch = adjust_orientation(basis_pitch - range_pitch,
-					       MIN_PITCH, MAX_PITCH) +
-			    pitch_range;
+					       MIN_PITCH, MAX_PITCH) ;
 	int adj_min_roll = adjust_orientation(basis_roll - range_roll,
-			 	 	      MIN_ROLL, MAX_ROLL) +
-			   roll_range;
+			 	 	      MIN_ROLL, MAX_ROLL);
 	int adj_max_roll = adjust_orientation(basis_roll + range_roll,
-					      MIN_ROLL, MAX_ROLL) +
-			   roll_range;
+					      MIN_ROLL, MAX_ROLL);
 
-	/* Rebase the current orientation so that 0 is the min val
-	 * to be consisted with the adjusted ranges.
-	 */
 	int adj_azimuth = orient.azimuth; /* azimuth already 0-360*/
-	int adj_pitch = orient.pitch + pitch_range;
-	int adj_roll = orient.roll + roll_range;
+	int adj_pitch = orient.pitch;
+	int adj_roll = orient.roll ;
 
-	if(wrapped_around(adj_min_azimuth, adj_max_azimuth)) {
-		if (adj_azimuth > adj_min_azimuth ||
-		    adj_azimuth < adj_max_azimuth) {
-			if(adj_azimuth > adj_max_azimuth)
-				printk("W-Azimuth fail1: %d vs %d", adj_azimuth, adj_max_azimuth);
-			else
-				printk("W-Azimuth fail2: %d vs %d", adj_azimuth, adj_min_azimuth);
-			printk("Azimuth fail");
-			return 0;
-		}
-	} else {
-		if (adj_azimuth > adj_max_azimuth ||
-		    adj_azimuth < adj_min_azimuth) {
-			if(adj_azimuth > adj_max_azimuth)
-				printk("Azimuth fail1: %d vs %d", adj_azimuth, adj_max_azimuth);
-			else
-				printk("Azimuth fail2: %d vs %d", adj_azimuth, adj_min_azimuth);
-			printk("Azimuth fail");
-			return 0;
-		}
+	if (adj_azimuth > adj_max_azimuth ||
+	    adj_azimuth < adj_min_azimuth) {
+		if(adj_azimuth > adj_max_azimuth)
+			printk("Azimuth fail1: %d vs %d", adj_azimuth, adj_max_azimuth);
+		else
+			printk("Azimuth fail2: %d vs %d", adj_azimuth, adj_min_azimuth);
+		printk("Azimuth fail");
+		return 0;
 	}
 
-	if(wrapped_around(adj_min_pitch, adj_max_pitch)) {
-		if (adj_pitch > adj_min_pitch ||
-		    adj_pitch < adj_max_pitch) {
-			if(adj_pitch > adj_max_pitch)
-				printk("W-Pitch fail 1: %d vs %d", adj_pitch, adj_max_pitch);
-			else
-				printk("W-Pitch fail 1: %d vs %d", adj_pitch, adj_min_pitch);
-			return 0;
-		}
-	} else {
-		if (adj_pitch > adj_max_pitch ||
-		    adj_pitch < adj_min_pitch) {
-			if(adj_pitch > adj_max_pitch)
-				printk("Pitch fail 1: %d vs %d", adj_pitch, adj_max_pitch);
-			else
-				printk("Pitch fail 1: %d vs %d", adj_pitch, adj_min_pitch);
-			return 0;
-		}
+
+	if (adj_pitch > adj_max_pitch ||
+	    adj_pitch < adj_min_pitch) {
+		if(adj_pitch > adj_max_pitch)
+			printk("Pitch fail 1: %d vs %d", adj_pitch, adj_max_pitch);
+		else
+			printk("Pitch fail 1: %d vs %d", adj_pitch, adj_min_pitch);
+		return 0;
 	}
 
-	if(wrapped_around(adj_min_roll, adj_max_roll)) {
-		if (adj_roll > adj_min_roll ||
-		    adj_roll < adj_max_roll) {
-			if(adj_roll > adj_max_roll)
-				printk("W-Roll Fail 1: %d vs %d", adj_roll, adj_max_roll);
-			else
-				printk("W-Roll Fail 2: %d vs %d", adj_roll, adj_min_roll);
 
-			printk("roll fail");
-			return 0;
-		}
-	} else {
-		if (adj_roll > adj_max_roll ||
-		    adj_roll < adj_min_roll) {
-			if(adj_roll > adj_max_roll)
-				printk("Roll Fail 1: %d vs %d", adj_roll, adj_max_roll);
-			else
-				printk("Roll Fail 2: %d vs %d", adj_roll, adj_min_roll);
+	if (adj_roll > adj_max_roll ||
+	    adj_roll < adj_min_roll) {
+		if(adj_roll > adj_max_roll)
+			printk("Roll Fail 1: %d vs %d", adj_roll, adj_max_roll);
+		else
+			printk("Roll Fail 2: %d vs %d", adj_roll, adj_min_roll);
 
-			printk("roll fail");
-			return 0;
-		}
+		printk("roll fail");
+		return 0;
 	}
-
 
 	return 1;
 }
