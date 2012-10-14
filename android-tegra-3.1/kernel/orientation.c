@@ -341,7 +341,7 @@ SYSCALL_DEFINE1(orientlock_write, struct orientation_range __user *, orient)
 SYSCALL_DEFINE1(orientunlock_read, struct orientation_range __user *, orient)
 {
 	struct orientation_range korient;
-	struct list_head *current_item;
+	struct list_head *current_item, *next_item;
 	struct lock_entry *entry = NULL;
 
 	if (copy_from_user(&korient, orient, sizeof(struct orientation_range)) != 0)
@@ -349,19 +349,22 @@ SYSCALL_DEFINE1(orientunlock_read, struct orientation_range __user *, orient)
 	
 	printk("About to acquire lock 358");
 	spin_lock(&GRANTED_LOCK);
-	list_for_each(current_item, &granted_list) {
+	list_for_each_safe(current_item, next_item, &granted_list) {
 		entry = list_entry(current_item,
 				   struct lock_entry, granted_list);
 		if (range_equals(&korient, entry->range) &&
-		    entry->type == READER_ENTRY)
-			break;
+		    entry->type == READER_ENTRY) {
+			list_del(current_item);
+			kfree(entry->range);
+			kfree(entry);
+			spin_unlock(&GRANTED_LOCK);
+			return 0;
+		}
 		else
 			; //no locks with the orientation_range available
 	}
-	list_del(current_item);
 	spin_unlock(&GRANTED_LOCK);
-	kfree(entry->range);
-	kfree(entry);
+	printk("SOUND THE ALARM\n");
 	return 0;
 }
 

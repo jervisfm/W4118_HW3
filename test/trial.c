@@ -66,7 +66,7 @@ static int read_integer(mpz_ptr result) {
 	/* get read lock - only want to work when device is lying facedown */
 	struct orientation_range read_lock;
 	struct dev_orientation read_lock_orient;
-	read_lock_orient.azimuth = 0;
+	read_lock_orient.azimuth = 180;
 	read_lock_orient.pitch = 180;
 	read_lock_orient.roll = 0;
 
