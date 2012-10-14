@@ -11,7 +11,8 @@
 static mpz_t one;
 static mpz_t two;
 
-static void find_factors(mpz_t base) {
+static void find_factors(mpz_t base)
+{
 	char *str;
 	int res;
 	mpz_t i;
@@ -81,7 +82,7 @@ static char *read_line(FILE* input)
 	 */
 	int string_size = 1;
 
-	while (fscanf(input,"%c", &c) > 0 && c != '\n') {
+	while (fscanf(input, "%c", &c) > 0 && c != '\n') {
 		++string_size;
 		int new_buffersize = sizeof(char) * (string_size);
 		line = realloc(line, new_buffersize);
@@ -104,8 +105,8 @@ static char *read_line(FILE* input)
 /**
  * Returns only 1 on success and 0 on failure
  */
-static int read_integer(mpz_ptr result) {
-
+static int read_integer(mpz_ptr result)
+{
 	const char *filename = FILENAME;
 	char *integer_string = NULL;
 	int ret_code = 1;
@@ -124,12 +125,12 @@ static int read_integer(mpz_ptr result) {
 
 	printf("Attempting to take read lock...");
 	orient_read_lock(&read_lock);
-	printf("Acquired ! \n");
+	printf("Acquired !\n");
 	FILE *integer_file = fopen(filename, "r");
 	if (integer_file == NULL) {
 		ret_code = 0;
 		perror("Integer file not found: '%s'\n");
-	} else if ( (integer_string = read_line(integer_file)) != NULL) {
+	} else if ((integer_string = read_line(integer_file)) != NULL) {
 		printf("Read Integer: %s\n", integer_string);
 		mpz_init_set_str(result, integer_string, 10);
 		ret_code = 1;
@@ -142,7 +143,7 @@ static int read_integer(mpz_ptr result) {
 		fclose(integer_file);
 	printf("Attempting to release read lock...");
 	orient_read_unlock(&read_lock);
-	printf("Released ! \n");
+	printf("Released !\n");
 	return ret_code;
 }
 
@@ -165,7 +166,7 @@ int main(int argc, const char *argv[])
 	while (1) {
 		if (read_integer(integer))
 			find_factors(integer);
-		//mpz_add(largenum, largenum, one);
+		/*mpz_add(largenum, largenum, one);*/
 	}
 	return EXIT_SUCCESS;
 }
