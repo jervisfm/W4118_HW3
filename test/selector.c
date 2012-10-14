@@ -76,6 +76,7 @@ int main(int argc, char **argv) {
 
 		FILE *integer_file = fopen(filename, "w");
 		fprintf(integer_file, "%d", counter);
+		printf("Writing %d to integer file\n", counter);
 
 		/* Release write lock */
 		printf("Attempting to release write lock...");

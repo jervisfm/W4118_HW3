@@ -13,7 +13,7 @@
 #include <unistd.h>
 #include <sys/ioctl.h>
 #include "../android-tegra-3.1/include/linux/akm8975.h"
-#include "../android-tegra-3.1/include/linux/orientation.h"
+#include "orient.h"
 
 #include <hardware/hardware.h>
 #include <hardware/sensors.h> /* <-- This is a good place to look! */
@@ -69,8 +69,8 @@ static int poll_sensor_data(struct sensors_poll_device_t *sensors_device)
 			perror("Failed to update kernel");
 
 		/* At this point we should have valid data */
-		dbg_compass("Orientation: azimuth=%0.2f, pitch=%0.2f, "
-			"roll=%0.2f\n", buffer[i].orientation.azimuth,
+		dbg_compass("Orientation: azimuth= %0.2f, pitch= %0.2f, "
+			"roll= %0.2f\n", buffer[i].orientation.azimuth,
 			buffer[i].orientation.pitch, buffer[i].orientation.roll);
 	}
 	return 0;
