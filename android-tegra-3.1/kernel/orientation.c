@@ -34,7 +34,8 @@ static int generic_search_list(struct orientation_range *target,
 	list_for_each(current_item, list) {
 		struct lock_entry *entry;
 		if (list == &waiters_list)
-			entry = list_entry(current_item, struct lock_entry, list);
+			entry = list_entry(current_item,
+					struct lock_entry, list);
 		else
 			entry = list_entry(current_item, struct lock_entry,
 					   granted_list);
@@ -107,7 +108,8 @@ static int adjust_orientation(int num, int min_val, int max_val)
 	}
 }
 
-static int in_range(struct orientation_range *range, struct dev_orientation orient)
+static int in_range(struct orientation_range *range,
+		struct dev_orientation orient)
 {
 	struct dev_orientation basis = range->orient;
 
@@ -123,21 +125,17 @@ static int in_range(struct orientation_range *range, struct dev_orientation orie
 	int range_roll = (int) range->roll_range;
 
 	if(orient.azimuth > basis_azimuth + range_azimuth) {
-		printk("Fail Azimuth1: %d > %d +  %d\n", orient.azimuth, basis_azimuth,range_azimuth);
 		return 0;
 	}
 	if(orient.azimuth < basis_azimuth - range_azimuth) {
-		printk("Fail Azimuth2: %d < %d - %d\n", orient.azimuth, basis_azimuth,range_azimuth);
 		return 0;
 	}
 	if(orient.pitch > basis_pitch + range_pitch ||
 			orient.pitch < basis_pitch - range_pitch) {
-		printk("Fail Pitch\n");
 		return 0;
 	}
 	if(orient.roll > basis_roll + range_roll ||
 	   orient.roll < basis_roll - range_roll) {
-		printk("Fail orient\n");
 		return 0;
 	}
 
@@ -184,7 +182,7 @@ static int is_running(int pid ){
  * from the granted list.
  * NOTICE we acquire the GRANT LIST LOCK
  */
-static void release_dead_tasks_locks() {
+static void release_dead_tasks_locks(void) {
 	struct list_head *current_item;
 	struct list_head *next_item;
 	int counter = 1;
@@ -222,54 +220,13 @@ static void process_waiter(struct list_head *current_item)
 	}
 }
 
-/* Notice: We acquire the grant list lock */
-static void print_grantlist(void) {
-	struct list_head *current_item;
-	struct list_head *next_item;
-	int counter = 1;
-	spin_lock(&GRANTED_LOCK);
-	list_for_each_safe(current_item, next_item, &granted_list) {
-		struct lock_entry *entry = list_entry(current_item,
-						      struct lock_entry,
-						      granted_list);
-		if(entry->type == READER_ENTRY) {
-			printk(" R ");
-		} else {
-			printk(" W ");
-		}
-		++counter;
-	}
-	printk("\n");
-	spin_unlock(&GRANTED_LOCK);
-
-}
-
-/*
- * Assumes caller ALREADY has wait list lock.
- */
-static void print_waitlist(void) {
-	struct list_head *current_item;
-	struct list_head *next_item;
-	int counter = 1;
-	list_for_each_safe(current_item, next_item, &waiters_list) {
-		struct lock_entry *entry = list_entry(current_item,
-						      struct lock_entry, list);
-		if(entry->type == READER_ENTRY) {
-			printk(" R ");
-		} else {
-			printk(" W ");
-		}
-		++counter;
-	}
-	printk("\n");
-}
-
 SYSCALL_DEFINE1(set_orientation, struct dev_orientation __user *, orient)
 {
 	spin_lock(&SET_LOCK);
-	struct list_head *current_item;
-	struct list_head *next_item;
-	int counter = 0;
+	struct list_head *current_item, *next_item;
+	int counter;
+
+	counter = 0;
 	if (copy_from_user(&current_orient, orient,
 				sizeof(struct dev_orientation)) != 0)
 		return -EFAULT;
@@ -281,10 +238,7 @@ SYSCALL_DEFINE1(set_orientation, struct dev_orientation __user *, orient)
 		process_waiter(current_item);
 	}
 
-	print_waitlist();
-	print_grantlist();
 	spin_unlock(&WAITERS_LOCK);
-
 	spin_unlock(&SET_LOCK);
 	return 0;
 }
@@ -303,7 +257,8 @@ SYSCALL_DEFINE1(orientlock_read, struct orientation_range __user *, orient)
 		return  -ENOMEM;
 	}
 
-	if (copy_from_user(korient, orient, sizeof(struct orientation_range)) != 0)
+	if (copy_from_user(korient, orient,
+				sizeof(struct orientation_range)) != 0)
 		return -EFAULT;
 
 	entry = kmalloc(sizeof(struct lock_entry), GFP_KERNEL);
@@ -346,7 +301,8 @@ SYSCALL_DEFINE1(orientlock_write, struct orientation_range __user *, orient)
 		printk("Kmalloc failure: orientlock_write\n");
 		return  -ENOMEM;
 	}
-	if (copy_from_user(korient, orient, sizeof(struct orientation_range)) != 0)
+	if (copy_from_user(korient, orient,
+				sizeof(struct orientation_range)) != 0)
 		return -EFAULT;
 
 	entry = kmalloc(sizeof(entry), GFP_KERNEL);
@@ -382,7 +338,8 @@ SYSCALL_DEFINE1(orientunlock_read, struct orientation_range __user *, orient)
 	struct list_head *current_item, *next_item;
 	struct lock_entry *entry = NULL;
 	int did_unlock = 0;
-	if (copy_from_user(&korient, orient, sizeof(struct orientation_range)) != 0)
+	if (copy_from_user(&korient, orient,
+				sizeof(struct orientation_range)) != 0)
 		return -EFAULT;
 	
 	spin_lock(&GRANTED_LOCK);
@@ -422,7 +379,8 @@ SYSCALL_DEFINE1(orientunlock_write, struct orientation_range __user *, orient)
 	struct orientation_range korient;
 	struct list_head *current_item, *next_item;
 
-	if (copy_from_user(&korient, orient, sizeof(struct orientation_range)) != 0)
+	if (copy_from_user(&korient, orient,
+				sizeof(struct orientation_range)) != 0)
 		return -EFAULT;
 	
 	spin_lock(&GRANTED_LOCK);
