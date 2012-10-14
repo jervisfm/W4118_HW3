@@ -231,6 +231,7 @@ SYSCALL_DEFINE1(set_orientation, struct dev_orientation __user *, orient)
 	return 0;
 }
 
+// TODO: Fix the list traversal in all SYS calls : use list_for_each_safe.
 SYSCALL_DEFINE1(orientlock_read, struct orientation_range __user *, orient)
 {
 	struct orientation_range *korient;
