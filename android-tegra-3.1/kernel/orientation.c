@@ -3,21 +3,21 @@
 #include <linux/uaccess.h>
 #include <linux/syscalls.h>
 
-void print_orientation(struct dev_orientation orient)
+static void print_orientation(struct dev_orientation orient)
 {
 	printk("Azimuth: %d\n", orient.azimuth);
 	printk("Pitch: %d\n", orient.pitch);
 	printk("Roll: %d\n", orient.roll);
 }
 
-int orient_equals(struct dev_orientation one, struct dev_orientation two)
+static int orient_equals(struct dev_orientation one, struct dev_orientation two)
 {
 	return (one.azimuth == two.azimuth &&
 		one.pitch == two.pitch &&
 		one.roll == two.roll);
 }
 
-int range_equals(struct orientation_range *range,
+static int range_equals(struct orientation_range *range,
 		 struct orientation_range *target)
 {
 	return (range->azimuth_range == target->azimuth_range &&
@@ -26,7 +26,7 @@ int range_equals(struct orientation_range *range,
 		orient_equals(range->orient, target->orient));
 }
 
-int generic_search_list(struct orientation_range *target,
+static int generic_search_list(struct orientation_range *target,
 			struct list_head *list, int type)
 {
 	int flag = 1;
@@ -48,63 +48,38 @@ int generic_search_list(struct orientation_range *target,
 }
 
 
-int no_writer_waiting(struct orientation_range *target)
+static int no_writer_waiting(struct orientation_range *target)
 {
 	int rc;
-	printk("About to acquire lock 53");
 	rc = generic_search_list(target, &waiters_list, 1);
 	return rc;
 }
 
-int no_writer_grabbed(struct orientation_range *target)
+static int no_writer_grabbed(struct orientation_range *target)
 {	
 	int rc;
-	printk("About to acquire lock 63");
 	spin_lock(&GRANTED_LOCK);
 	rc = generic_search_list(target, &granted_list, 1);
 	spin_unlock(&GRANTED_LOCK);
 	return rc;
 }
 
-int no_reader_grabbed(struct orientation_range *target)
+static int no_reader_grabbed(struct orientation_range *target)
 {
 	int rc;
-	printk("About to acquire lock 73");
 	spin_lock(&GRANTED_LOCK);
 	rc = generic_search_list(target, &granted_list, 0);
 	spin_unlock(&GRANTED_LOCK);
 	return rc;
 }
 
-int list_size(struct list_head *head) {
-
-	return 0;
-	/*
-	if (head == NULL)
-		return 0;
-	int size = 0;
-	struct list_head *curr = head->next;
-	for (curr = head->next; curr != head; curr = curr->next) {
-		++size;
-	}
-	return size; */
-}
-
-void grant_lock(struct lock_entry *entry)
+static void grant_lock(struct lock_entry *entry)
 {
-	printk("Setting atomic ...");
 	atomic_set(&entry->granted,1);
 
-	printk("Done\n");
-
-	printk("Adding to grant list... size %d", list_size(&granted_list));
-	printk("About to acquire lock 103");
 	spin_lock(&GRANTED_LOCK);
 	list_add_tail(&entry->granted_list, &granted_list);
 	spin_unlock(&GRANTED_LOCK);
-	printk("Done, size %d\n", list_size(&granted_list));
-
-	printk("Deleting entry...");
 
 	if (&entry->list == NULL) {
 		printk("OOPS: &entry->list is NULLLLLLL ");
@@ -119,8 +94,6 @@ void grant_lock(struct lock_entry *entry)
 	}
 
 	list_del(&entry->list);
-	printk("Doone\n");
-
 	wake_up(&sleepers);
 }
 
@@ -130,11 +103,10 @@ void grant_lock(struct lock_entry *entry)
  * it falls within the given range. i.e. if out of range
  * use the min/max values.
  */
-int adjust_orientation(int num, int min_val, int max_val)
+static int adjust_orientation(int num, int min_val, int max_val)
 {
 	int range = abs((max_val - min_val));
 	if(num > max_val) {
-		printk("Max val: %d\n", max_val);
 		return max_val;
 	} else if (num < min_val) {
 		return min_val;
@@ -147,7 +119,7 @@ int adjust_orientation(int num, int min_val, int max_val)
  * Determines if a wrap around has occured.
  *
  */
-int wrapped_around(int min, int max) {
+static int wrapped_around(int min, int max) {
 
 	/*
 	 * When you have a wrap around,
@@ -160,7 +132,7 @@ int wrapped_around(int min, int max) {
 		return 0;
 }
 
-int in_range(struct orientation_range *range, struct dev_orientation orient)
+static int in_range(struct orientation_range *range, struct dev_orientation orient)
 {
 	struct dev_orientation basis = range->orient;
 
@@ -283,24 +255,8 @@ static void release_dead_tasks_locks() {
 	spin_unlock(&GRANTED_LOCK);
 }
 
-void process_waiter(struct list_head *current_item)
+static void process_waiter(struct list_head *current_item)
 {
-	/**
-	 * We have a reader starvation issue:
-	 *
-	 * Specifically if wait queue is like this
-	 * R R W.
-	 *
-	 * The readers wont' be able to write since reader
-	 * cant take lock when there is a writer waiting.
-	 *
-	 * I'm going to change the queue processing
-	 * so that we process FIFO.
-	 *
-	 * I.e if there is reader, we can the lock if possible.
-	 * and if it is writer we grant the lock if possible too.
-	 */
-
 	printk("In Process Waiter\n");
 	if(current_item == NULL) {
 		printk("Item is NULL");
@@ -357,7 +313,6 @@ static void print_grantlist(void) {
 	struct list_head *next_item;
 	int counter = 1;
 	spin_lock(&GRANTED_LOCK);
-	printk("\n**** Granted list size: %d \n", list_size(&granted_list));
 	list_for_each_safe(current_item, next_item, &granted_list) {
 		struct lock_entry *entry = list_entry(current_item,
 						      struct lock_entry,
@@ -381,7 +336,6 @@ static void print_waitlist(void) {
 	struct list_head *current_item;
 	struct list_head *next_item;
 	int counter = 1;
-	printk("\n**** \nWait list size: %d \n", list_size(&waiters_list));
 	list_for_each_safe(current_item, next_item, &waiters_list) {
 		struct lock_entry *entry = list_entry(current_item,
 						      struct lock_entry, list);
@@ -532,12 +486,10 @@ SYSCALL_DEFINE1(orientlock_write, struct orientation_range __user *, orient)
 	entry->type = WRITER_ENTRY;
 	printk("Done!");
 
-	printk("Adding to waiters: size %d\n", list_size(&waiters_list));
 	printk("About to acquire lock 333");
 	spin_lock(&WAITERS_LOCK);
 	list_add_tail(&entry->list, &waiters_list);
 	spin_unlock(&WAITERS_LOCK);
-	printk("Addto waiters: size %d\n", list_size(&waiters_list));
 
 	add_wait_queue(&sleepers, &wait);
 	printk("Added to wait queue");
