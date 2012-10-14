@@ -205,6 +205,12 @@ void process_waiter(struct list_head *current_item)
 	if (in_range(entry->range, current_orient)) {
 		printk("We are in range !!!\n");
 		if (entry->type == READER_ENTRY) { /* Reader */
+			if (!no_writer_grabbed(target))
+				printk("Writer grabbed\n");
+			if (!no_writer_waiting(target))
+				printk("Writer waiting\n");
+
+
 			if (no_writer_waiting(target) &&
 			   no_writer_grabbed(target))
 				grant_lock(entry);
@@ -235,7 +241,6 @@ SYSCALL_DEFINE1(set_orientation, struct dev_orientation __user *, orient)
 	struct list_head *current_item;
 	struct list_head *next_item;
 	int counter = 0;
-	//TODO: Lock set_orientation for multiprocessing
 	if (copy_from_user(&current_orient, orient,
 				sizeof(struct dev_orientation)) != 0)
 		return -EFAULT;
@@ -263,6 +268,7 @@ SYSCALL_DEFINE1(set_orientation, struct dev_orientation __user *, orient)
 	printk("About to return set_orient\n");
 	// print_orientation(current_orient);
 	spin_unlock(&SET_LOCK);
+	printk("Unlocked\n");
 	return 0;
 }
 
@@ -288,10 +294,11 @@ SYSCALL_DEFINE1(orientlock_read, struct orientation_range __user *, orient)
 	spin_lock(&WAITERS_LOCK);
 	list_add_tail(&entry->list, &waiters_list);
 	spin_unlock(&WAITERS_LOCK);
-	
+	printk("Released lock 298");
 
 	add_wait_queue(&sleepers, &wait);
 	while(!atomic_read(&entry->granted)) {
+		printk("Read lock sleeping, good night!\n");
 	       prepare_to_wait(&sleepers, &wait, TASK_INTERRUPTIBLE);
 	       schedule();
 	}
