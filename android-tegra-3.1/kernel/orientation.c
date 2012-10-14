@@ -92,10 +92,6 @@ void grant_lock(struct lock_entry *entry)
 {
 	printk("Setting atomic ...");
 	atomic_set(&entry->granted,1);
-	// TODO: wake up the sleeping task the right way.
-	// snippet below causes a crash.
-
-	wake_up(&sleepers);
 
 	printk("Done\n");
 
@@ -106,18 +102,11 @@ void grant_lock(struct lock_entry *entry)
 	spin_unlock(&GRANTED_LOCK);
 	printk("Done, size %d\n", list_size(&granted_list));
 
-	printk("Getting spink lock...");
-	printk("About to acquire lock 110");
-	spin_lock(&WAITERS_LOCK);
-	printk("Acquired\n");
-
 	printk("Deleting entry...");
 	list_del(&entry->list);
 	printk("Doone\n");
 
-	printk("Unlocking lock...");
-	spin_unlock(&WAITERS_LOCK);
-	printk("Unlocked\n");
+	wake_up(&sleepers);
 }
 
 
