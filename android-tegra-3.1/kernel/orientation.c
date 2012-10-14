@@ -47,14 +47,6 @@ static int generic_search_list(struct orientation_range *target,
 	return flag;
 }
 
-
-static int no_writer_waiting(struct orientation_range *target)
-{
-	int rc;
-	rc = generic_search_list(target, &waiters_list, 1);
-	return rc;
-}
-
 static int no_writer_grabbed(struct orientation_range *target)
 {	
 	int rc;
@@ -115,23 +107,6 @@ static int adjust_orientation(int num, int min_val, int max_val)
 	}
 }
 
-/* *
- * Determines if a wrap around has occured.
- *
- */
-static int wrapped_around(int min, int max) {
-
-	/*
-	 * When you have a wrap around,
-	 * the max becomes less than the min.
-	 */
-
-	if(max < min)
-		return 1;
-	else
-		return 0;
-}
-
 static int in_range(struct orientation_range *range, struct dev_orientation orient)
 {
 	struct dev_orientation basis = range->orient;
@@ -190,7 +165,6 @@ static int is_running(int pid ){
 		return 0;
 	}
 
-	printk("\n_________About to do is_normal\n");
 	is_dead = (task->state & TASK_DEAD) != 0;
 	is_wakekill = (task->state & TASK_WAKEKILL) != 0;
 	exit_zombie = (task->exit_state & EXIT_ZOMBIE) != 0;
@@ -203,30 +177,6 @@ static int is_running(int pid ){
 		printk("Task is normal: %d ", task->pid);
 		return 1;
 	}
-}
-
-
-static void is_running_test_method() {
-
-	struct list_head *current_item;
-	struct list_head *next_item;
-	int counter = 1;
-	spin_lock(&GRANTED_LOCK);
-	list_for_each_safe(current_item, next_item, &granted_list) {
-		struct lock_entry *entry = list_entry(current_item,
-						      struct lock_entry,
-						      granted_list);
-		int pid = entry->pid;
-		int running = is_running(pid);
-		if(!running) {
-			printk("\nFound NOT running pid: %d. \n", pid);
-		} else {
-			printk("Found running pid : %d\n", pid);
-		}
-		++counter;
-	}
-	printk("\n");
-	spin_unlock(&GRANTED_LOCK);
 }
 
 /**
@@ -245,66 +195,31 @@ static void release_dead_tasks_locks() {
 						      granted_list);
 		int pid = entry->pid;
 		if(!is_running(pid)) {
-			printk("\nFound not running pid: %d. ", pid);
-			printk("Deleting this pid from grant list\n");
 			list_del(current_item);
 		}
 		++counter;
 	}
-	printk("\n");
 	spin_unlock(&GRANTED_LOCK);
 }
 
 static void process_waiter(struct list_head *current_item)
 {
-	printk("In Process Waiter\n");
-	if(current_item == NULL) {
-		printk("Item is NULL");
-	}
-
-	printk("About to do list entry...\n");
 	struct lock_entry *entry = list_entry(current_item,
 					      struct lock_entry, list);
 
-	if(entry == NULL) {
-		printk("entry NULL");
-	}
-
 	struct orientation_range *target = entry->range;
 
-	if(target ==NULL) {
-		printk("target is NULL");
-	}
-
 	if (in_range(entry->range, current_orient)) {
-		printk("We are in range !!!\n");
 		if (entry->type == READER_ENTRY) { /* Reader */
-			printk("In Reader block\n");
-			if (!no_writer_grabbed(target))
-				printk("Writer grabbed\n");
-			if (!no_writer_waiting(target))
-				printk("Writer waiting\n");
-
 			if (no_writer_grabbed(target))
 				grant_lock(entry);
 		}
 		else { /* Writer */
-			printk("In the writer blockl\n");
-			if (!no_writer_grabbed(target))
-				printk("Writer grabbed\n");
-
-			if (!no_reader_grabbed(target))
-				printk("Reader grabbed\n");
-
 			if (no_writer_grabbed(target) &&
-			    no_reader_grabbed(target)) {
-				printk("About to grant lock");
+			    no_reader_grabbed(target))
 				grant_lock(entry);
-			}
-
 		}
 	}
-	printk("Process waiter completed\n");
 }
 
 /* Notice: We acquire the grant list lock */
@@ -351,7 +266,6 @@ static void print_waitlist(void) {
 
 SYSCALL_DEFINE1(set_orientation, struct dev_orientation __user *, orient)
 {
-	printk("About to acquire lock 244");
 	spin_lock(&SET_LOCK);
 	struct list_head *current_item;
 	struct list_head *next_item;
@@ -360,42 +274,18 @@ SYSCALL_DEFINE1(set_orientation, struct dev_orientation __user *, orient)
 				sizeof(struct dev_orientation)) != 0)
 		return -EFAULT;
 
-	// TODO: We need to automatically release locks for processes
-	// that took a lock and died, without releasing the lock.
-	
-	printk("About to acquire lock 257");
 	spin_lock(&WAITERS_LOCK);
-	printk("\nAttempting to remove dead task locks....");
 	release_dead_tasks_locks();
-	printk("\n====Before process wait list:\n");
-	print_waitlist();
-	print_grantlist();
 
 	list_for_each_safe(current_item, next_item, &waiters_list) {
-		int cpu_id = task_cpu(current);
-		++counter;
-		printk("Doing Item %d\n", counter);
-
-		printk("Running on CPU: %d", cpu_id);
-
-		if(current_item == NULL) {
-			printk("Null waiter list item\n");
-		}
-		printk("Addr=%p\n", current_item);
 		process_waiter(current_item);
-		printk("Finished iteration %d" , counter);
 	}
 
-	printk("\n----After process wait list:\n");
 	print_waitlist();
 	print_grantlist();
 	spin_unlock(&WAITERS_LOCK);
 
-	printk("About to return set_orient\n");
-	// print_orientation(current_orient);
-
 	spin_unlock(&SET_LOCK);
-	printk("Unlocked set_orient\n");
 	return 0;
 }
 
@@ -430,15 +320,12 @@ SYSCALL_DEFINE1(orientlock_read, struct orientation_range __user *, orient)
 	INIT_LIST_HEAD(&entry->granted_list);
 	entry->type = READER_ENTRY;
 
-	printk("About to acquire lock 298");
 	spin_lock(&WAITERS_LOCK);
 	list_add_tail(&entry->list, &waiters_list);
 	spin_unlock(&WAITERS_LOCK);
-	printk("Released lock 298");
 
 	add_wait_queue(&sleepers, &wait);
 	while(!atomic_read(&entry->granted)) {
-		//printk("Read lock sleeping, good night!\n");
 	       prepare_to_wait(&sleepers, &wait, TASK_INTERRUPTIBLE);
 	       schedule();
 	}
@@ -453,7 +340,6 @@ SYSCALL_DEFINE1(orientlock_write, struct orientation_range __user *, orient)
 	struct lock_entry *entry;
 	DEFINE_WAIT(wait);
 
-	printk("Before");
 	korient = kmalloc(sizeof(struct orientation_range), GFP_KERNEL);
 
 	if (korient == NULL) {
@@ -462,42 +348,30 @@ SYSCALL_DEFINE1(orientlock_write, struct orientation_range __user *, orient)
 	}
 	if (copy_from_user(korient, orient, sizeof(struct orientation_range)) != 0)
 		return -EFAULT;
-	printk("After");
 
 	entry = kmalloc(sizeof(entry), GFP_KERNEL);
 
 	if (entry == NULL) {
 		printk("Kmalloc failure!...\n");
 		return -ENOMEM;
-	} else {
-		printk("entry is OK: %p\n", entry);
 	}
-
+	
 	entry->range = korient;
 	entry->pid = current->pid;
-	printk("Setting atomic grant value|");
 	atomic_set(&entry->granted, 0);
-	printk("Done|");
-	printk("Initializing list|");
 	INIT_LIST_HEAD(&entry->list);
 	INIT_LIST_HEAD(&entry->granted_list);
-	printk("doone|");
-	printk("Setting entry type....|");
 	entry->type = WRITER_ENTRY;
-	printk("Done!");
 
-	printk("About to acquire lock 333");
 	spin_lock(&WAITERS_LOCK);
 	list_add_tail(&entry->list, &waiters_list);
 	spin_unlock(&WAITERS_LOCK);
 
 	add_wait_queue(&sleepers, &wait);
-	printk("Added to wait queue");
 	while(!atomic_read(&entry->granted)) {
 		prepare_to_wait(&sleepers, &wait, TASK_INTERRUPTIBLE);
 		schedule();
 	}
-	printk("Waking up");
 	finish_wait(&sleepers, &wait);
 	return 0;
 }
@@ -511,7 +385,6 @@ SYSCALL_DEFINE1(orientunlock_read, struct orientation_range __user *, orient)
 	if (copy_from_user(&korient, orient, sizeof(struct orientation_range)) != 0)
 		return -EFAULT;
 	
-	printk("About to acquire lock 358");
 	spin_lock(&GRANTED_LOCK);
 	list_for_each_safe(current_item, next_item, &granted_list) {
 		entry = list_entry(current_item,
@@ -552,7 +425,6 @@ SYSCALL_DEFINE1(orientunlock_write, struct orientation_range __user *, orient)
 	if (copy_from_user(&korient, orient, sizeof(struct orientation_range)) != 0)
 		return -EFAULT;
 	
-	printk("About to acquire lock 384");
 	spin_lock(&GRANTED_LOCK);
 	list_for_each_safe(current_item, next_item, &granted_list) {
 		struct lock_entry *entry;
@@ -570,6 +442,6 @@ SYSCALL_DEFINE1(orientunlock_write, struct orientation_range __user *, orient)
 			; //no locks with the orientation_range available
 	}
 	spin_unlock(&GRANTED_LOCK);
-	printk("SOUND THE ALARM\n");
+	printk("Undefined error\n");
 	return 0;
 }
