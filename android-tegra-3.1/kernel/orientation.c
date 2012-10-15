@@ -203,6 +203,7 @@ void process_waiter(struct list_head *current_item)
 	if (in_range(entry->range, current_orient)) {
 		printk("We are in range !!!\n");
 		if (entry->type == READER_ENTRY) { /* Reader */
+			printk("In Reader block\n");
 			if (!no_writer_grabbed(target))
 				printk("Writer grabbed\n");
 			if (!no_writer_waiting(target))
@@ -231,6 +232,26 @@ void process_waiter(struct list_head *current_item)
 	}
 	printk("Process waiter completed\n");
 }
+/*
+ * Assumes caller ALREADY has wait list lock.
+ */
+static void print_waitlist(void) {
+	struct list_head *current_item;
+	struct list_head *next_item;
+	int counter = 1;
+	printk("\n**** \nWait list size: %d \n", list_size(&waiters_list));
+	list_for_each_safe(current_item, next_item, &waiters_list) {
+		struct lock_entry *entry = list_entry(current_item,
+						      struct lock_entry, list);
+		if(entry->type == READER_ENTRY) {
+			printk(" R ");
+		} else {
+			printk(" W ");
+		}
+		++counter;
+	}
+	printk("\n");
+}
 
 SYSCALL_DEFINE1(set_orientation, struct dev_orientation __user *, orient)
 {
@@ -248,6 +269,9 @@ SYSCALL_DEFINE1(set_orientation, struct dev_orientation __user *, orient)
 	
 	printk("About to acquire lock 257");
 	spin_lock(&WAITERS_LOCK);
+	printk("About to process wait list:\n");
+	print_waitlist();
+
 	list_for_each_safe(current_item, next_item, &waiters_list) {
 		int cpu_id = task_cpu(current);
 		++counter;
@@ -266,7 +290,7 @@ SYSCALL_DEFINE1(set_orientation, struct dev_orientation __user *, orient)
 	printk("About to return set_orient\n");
 	// print_orientation(current_orient);
 	spin_unlock(&SET_LOCK);
-	printk("Unlocked\n");
+	printk("Unlocked set_orient\n");
 	return 0;
 }
 
