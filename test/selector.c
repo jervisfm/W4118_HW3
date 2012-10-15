@@ -8,6 +8,8 @@
 #include <stdio.h>
 #include <ctype.h> /* for is_digit method */
 #include <stdlib.h>
+#include <math.h>
+#include <gmp.h>
 #include "orient_lock.h"
 
 
@@ -25,6 +27,8 @@ erminated using ctrl+c by the user. Before releasing the write lock, you should
  *
  */
 
+
+static mpz_t one;
 
 static void usage() {
 	printf("Invalid arguments.\n");
@@ -47,12 +51,15 @@ static int is_number(char *string)
 
 
 int main(int argc, char **argv) {
-	int counter;
-	if(argc != 2 || !is_number(argv[1])) {
+	mpz_init_set_str(one, "1", 10);
+	mpz_t counter;
+	if (argc != 2 || !is_number(argv[1])) {
 		usage();
 		exit(-1);
 	}
-	counter = atoi(argv[1]);
+
+	mpz_init_set_str(counter, argv[1], 10);
+
 	printf("Stepping up orient structs...\n");
 	struct orientation_range write_lock;
 	/* Only want this to work when device is lying facedown */
@@ -79,15 +86,31 @@ int main(int argc, char **argv) {
 		printf(" Acquired !\n");
 
 		FILE *integer_file = fopen(filename, "w");
-		fprintf(integer_file, "%d", counter);
-		printf("Writing %d to integer file\n", counter);
+		char *buf;
+		/* NULL says the mpz_init_set_str function
+		 * should auto-allocate the memory for buf */
+		buf = mpz_get_str(NULL,10,counter);
+		printf("Computed %s\n",buf);
+		if(buf == NULL) {
+			printf("Warning: Could not get integer\n");
+			fclose(integer_file);
+			orient_write_unlock(&write_lock);
+			continue;
+		}
+
+		fprintf(integer_file, "%s", buf);
+		printf("Writing %s to integer file\n", buf);
 
 		/* Release write lock */
+		fclose(integer_file);
 		printf("Attempting to release write lock...");
 		orient_write_unlock(&write_lock);
 		printf(" Released !\n");
-		++counter;
-		fclose(integer_file);
+
+		/* Increment the MPZ number */
+		mpz_add(counter, counter, one);
+
+		free(buf);
 	}
 	printf("Exited while loop");
 	return 0;

@@ -52,15 +52,62 @@ static void find_factors(mpz_t base) {
 	printf("\n");
 }
 
+
+static void print_error(const char *err)
+{
+	printf("error: %s\n", err);
+}
+
+/*
+ * Reads line from given FILE
+ * Caller responsible for freeing returned line string
+ */
+static char *read_line(FILE* input)
+{
+	char c = '\0';
+	char *line = (char *) calloc(1, sizeof(char));
+
+	/*memory allocation failed*/
+	if (line == NULL) {
+		print_error("ReadLine memory allocation failed");
+		return NULL;
+	}
+
+	/*current index into line*/
+	int i = 0;
+
+	/* this includes the null character.
+	 * so an empty string has size of 1
+	 */
+	int string_size = 1;
+
+	while (fscanf(input,"%c", &c) > 0 && c != '\n') {
+		++string_size;
+		int new_buffersize = sizeof(char) * (string_size);
+		line = realloc(line, new_buffersize);
+		if (line == NULL) {
+			print_error("ReadLine memory reallocation failed");
+			return NULL;
+		}
+		line[i] = c;
+		line[i + 1] = '\0';
+		++i;
+	}
+	if (c == '\0') {
+		print_error("Reading character from line failed");
+		return NULL;
+	}
+	return line;
+}
+
+
 /**
  * Returns only 1 on success and 0 on failure
  */
 static int read_integer(mpz_ptr result) {
 
 	const char *filename = FILENAME;
-	const int INT_LENGTH = 32;
-	char integer_string[INT_LENGTH];
-	int num_result = -1;
+	char *integer_string = NULL;
 	int ret_code = 1;
 
 	/* get read lock - only want to work when device is lying facedown */
@@ -82,11 +129,11 @@ static int read_integer(mpz_ptr result) {
 	if (integer_file == NULL) {
 		ret_code = 0;
 		perror("Integer file not found: '%s'\n");
-	} else if (fgets(integer_string,INT_LENGTH, integer_file) != NULL) {
-		num_result = atoi(integer_string);
-		printf("Read Integer: %d\n", num_result);
-		mpz_init_set_d(result, num_result);
+	} else if ( (integer_string = read_line(integer_file)) != NULL) {
+		printf("Read Integer: %s\n", integer_string);
+		mpz_init_set_str(result, integer_string, 10);
 		ret_code = 1;
+		free(integer_string);
 	} else {
 		printf("Warning: Reading integer file failed\n");
 		ret_code = 0;
@@ -101,6 +148,9 @@ static int read_integer(mpz_ptr result) {
 
 int main(int argc, const char *argv[])
 {
+	/* Disbale buffering on stdout */
+	setvbuf(stdout, NULL, _IONBF, 0);
+
 	mpz_t integer;
 	mpz_t largenum;
 
