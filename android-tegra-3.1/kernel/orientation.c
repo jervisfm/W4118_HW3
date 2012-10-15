@@ -280,7 +280,7 @@ static int is_running(int pid) {
 	struct task_struct *task;
 	pid_struct = find_get_pid(pid);
 	task = pid_task(pid_struct,PIDTYPE_PID);
-
+	return -1;
 	// TODO: complete and Test this is_runnign method to see if it works
 
 }
