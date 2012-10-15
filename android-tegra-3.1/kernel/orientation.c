@@ -456,7 +456,7 @@ SYSCALL_DEFINE1(orientlock_read, struct orientation_range __user *, orient)
 
 	add_wait_queue(&sleepers, &wait);
 	while(!atomic_read(&entry->granted)) {
-		printk("Read lock sleeping, good night!\n");
+		//printk("Read lock sleeping, good night!\n");
 	       prepare_to_wait(&sleepers, &wait, TASK_INTERRUPTIBLE);
 	       schedule();
 	}
@@ -537,10 +537,11 @@ SYSCALL_DEFINE1(orientunlock_read, struct orientation_range __user *, orient)
 			; //no locks with the orientation_range available
 	}
 
-	if (!did_unlock) {
+
+	if (!did_unlock) { /* failed to unlocked */
 		spin_unlock(&GRANTED_LOCK);
 		return -1;
-	} else { /* unlocked successfully */
+	} else {
 		return 0;
 	}
 }
