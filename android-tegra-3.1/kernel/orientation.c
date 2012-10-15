@@ -47,6 +47,7 @@ int generic_search_list(struct orientation_range *target,
 	return flag;
 }
 
+
 int no_writer_waiting(struct orientation_range *target)
 {
 	int rc;
@@ -208,7 +209,6 @@ void process_waiter(struct list_head *current_item)
 				printk("Writer grabbed\n");
 			if (!no_writer_waiting(target))
 				printk("Writer waiting\n");
-
 
 			if (no_writer_waiting(target) &&
 			   no_writer_grabbed(target))
