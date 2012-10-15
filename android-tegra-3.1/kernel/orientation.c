@@ -183,6 +183,16 @@ int in_range(struct orientation_range *range, struct dev_orientation orient)
 
 void process_waiter(struct list_head *current_item)
 {
+	/**
+	 * We have a reader starvation issue:
+	 *
+	 * Specifically if wait queue is like this
+	 * R R W.
+	 *
+	 * The readers wont' be able to write since reader
+	 * cant take lock when there is a writer waiting.
+	 */
+
 	printk("In Process Waiter\n");
 	if(current_item == NULL) {
 		printk("Item is NULL");
@@ -232,6 +242,30 @@ void process_waiter(struct list_head *current_item)
 	}
 	printk("Process waiter completed\n");
 }
+
+/* Notice: We acquire the grant list lock */
+static void print_grantlist(void) {
+	struct list_head *current_item;
+	struct list_head *next_item;
+	int counter = 1;
+	spin_lock(&GRANTED_LOCK);
+	printk("\n**** \Granted list size: %d \n", list_size(&granted_list));
+	list_for_each_safe(current_item, next_item, &granted_list) {
+		struct lock_entry *entry = list_entry(current_item,
+						      struct lock_entry,
+						      granted_list);
+		if(entry->type == READER_ENTRY) {
+			printk(" R ");
+		} else {
+			printk(" W ");
+		}
+		++counter;
+	}
+	printk("\n");
+	spin_unlock(&GRANTED_LOCK);
+
+}
+
 /*
  * Assumes caller ALREADY has wait list lock.
  */
@@ -269,8 +303,9 @@ SYSCALL_DEFINE1(set_orientation, struct dev_orientation __user *, orient)
 	
 	printk("About to acquire lock 257");
 	spin_lock(&WAITERS_LOCK);
-	printk("About to process wait list:\n");
+	printk("\n====Before process wait list:\n");
 	print_waitlist();
+	print_grantlist();
 
 	list_for_each_safe(current_item, next_item, &waiters_list) {
 		int cpu_id = task_cpu(current);
@@ -286,9 +321,15 @@ SYSCALL_DEFINE1(set_orientation, struct dev_orientation __user *, orient)
 		process_waiter(current_item);
 		printk("Finished iteration %d" , counter);
 	}
+
+	printk("\n----After process wait list:\n");
+	print_waitlist();
+	print_grantlist();
 	spin_unlock(&WAITERS_LOCK);
+
 	printk("About to return set_orient\n");
 	// print_orientation(current_orient);
+
 	spin_unlock(&SET_LOCK);
 	printk("Unlocked set_orient\n");
 	return 0;
