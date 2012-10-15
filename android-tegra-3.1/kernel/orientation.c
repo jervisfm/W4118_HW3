@@ -191,6 +191,12 @@ void process_waiter(struct list_head *current_item)
 	 *
 	 * The readers wont' be able to write since reader
 	 * cant take lock when there is a writer waiting.
+	 *
+	 * I'm going to change the queue processing
+	 * so that we process FIFO.
+	 *
+	 * I.e if there is reader, we can the lock if possible.
+	 * and if it is writer we grant the lock if possible too.
 	 */
 
 	printk("In Process Waiter\n");
