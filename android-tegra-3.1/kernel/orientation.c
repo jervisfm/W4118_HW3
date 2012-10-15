@@ -271,6 +271,27 @@ static void print_grantlist(void) {
 
 }
 
+/* *
+ * Determines if the task with given pid is still running.
+ */
+static int is_running(int pid) {
+
+	struct pid *pid_struct;
+	struct task_struct *task;
+	pid_struct = find_get_pid(pid);
+	task = pid_task(pid_struct,PIDTYPE_PID);
+
+	// TODO: complete and Test this is_runnign method to see if it works
+
+}
+
+/**
+ * Removes the locks for process that are no longer running
+ */
+static void release_dead_tasks_locks() {
+
+}
+
 /*
  * Assumes caller ALREADY has wait list lock.
  */
@@ -353,6 +374,7 @@ SYSCALL_DEFINE1(orientlock_read, struct orientation_range __user *, orient)
 
 	entry = kmalloc(sizeof(struct lock_entry), GFP_KERNEL);
 	entry->range = korient;
+	entry->pid = current->pid;
 	atomic_set(&entry->granted,0);
 	INIT_LIST_HEAD(&entry->list);
 	INIT_LIST_HEAD(&entry->granted_list);
@@ -389,6 +411,7 @@ SYSCALL_DEFINE1(orientlock_write, struct orientation_range __user *, orient)
 
 	entry = kmalloc(sizeof(entry), GFP_KERNEL);
 	entry->range = korient;
+	entry->pid = current->pid;
 	atomic_set(&entry->granted, 0);
 	INIT_LIST_HEAD(&entry->list);
 	INIT_LIST_HEAD(&entry->granted_list);

@@ -8,6 +8,8 @@
 #include <asm/atomic.h>
 #include <linux/kernel.h>
 #include <linux/slab.h>
+#include <linux/pid.h>
+
 
 /* Types for lock entry */
 #define READER_ENTRY 0
@@ -46,6 +48,7 @@ struct lock_entry {
 	struct list_head list; /* Waiters list */
 	struct list_head granted_list;
 	int type; /* 0 for read 1 for write */
+	int pid; /* pid of process that runs this */
 };
 
 LIST_HEAD(waiters_list);
