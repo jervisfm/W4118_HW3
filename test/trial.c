@@ -138,7 +138,8 @@ static int read_integer(mpz_ptr result) {
 		printf("Warning: Reading integer file failed\n");
 		ret_code = 0;
 	}
-	fclose(integer_file);
+	if (integer_file != NULL)
+		fclose(integer_file);
 	printf("Attempting to release read lock...");
 	orient_read_unlock(&read_lock);
 	printf("Released ! \n");
