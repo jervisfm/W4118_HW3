@@ -181,6 +181,92 @@ int in_range(struct orientation_range *range, struct dev_orientation orient)
 	return 1;
 }
 
+
+/* *
+ * Determines if the task with given pid is still running.
+ * Returns 1 if true and 0 if false.
+ * Tested this on emulator to confirm it's working.
+ */
+static int is_running(int pid ){
+
+	struct pid *pid_struct;
+	struct task_struct *task;
+	int is_dead, is_wakekill, exit_zombie, exit_dead;
+	pid_struct = find_get_pid(pid);
+
+	if(pid_struct == NULL) {
+		return 0;
+	}
+	task = pid_task(pid_struct,PIDTYPE_PID);
+	if(task == NULL) {
+		return 0;
+	}
+
+	printk("\n_________About to do is_normal\n");
+	is_dead = (task->state & TASK_DEAD) != 0;
+	is_wakekill = (task->state & TASK_WAKEKILL) != 0;
+	exit_zombie = (task->exit_state & EXIT_ZOMBIE) != 0;
+	exit_dead = (task->exit_state & EXIT_DEAD) != 0;
+
+	if(is_dead || is_wakekill || exit_zombie || exit_dead) {
+		printk("Task is not RUNNING ever: %d", task->pid);
+		return 0;
+	} else {
+		printk("Task is normal: %d ", task->pid);
+		return 1;
+	}
+}
+
+
+static void is_running2() {
+
+	struct list_head *current_item;
+	struct list_head *next_item;
+	int counter = 1;
+	spin_lock(&GRANTED_LOCK);
+	list_for_each_safe(current_item, next_item, &granted_list) {
+		struct lock_entry *entry = list_entry(current_item,
+						      struct lock_entry,
+						      granted_list);
+		int pid = entry->pid;
+		int running = is_running(pid);
+		if(!running) {
+			printk("\nFound NOT running pid: %d. \n", pid);
+		} else {
+			printk("Found running pid : %d\n", pid);
+		}
+		++counter;
+	}
+	printk("\n");
+	spin_unlock(&GRANTED_LOCK);
+}
+
+/**
+ * Removes the locks for process that are no longer running
+ * from the granted list.
+ * NOTICE we acquire the GRANT LIST LOCK
+ */
+static void release_dead_tasks_locks() {
+	struct list_head *current_item;
+	struct list_head *next_item;
+	int counter = 1;
+	spin_lock(&GRANTED_LOCK);
+	list_for_each_safe(current_item, next_item, &granted_list) {
+		struct lock_entry *entry = list_entry(current_item,
+						      struct lock_entry,
+						      granted_list);
+		int pid = entry->pid;
+		if(!is_running(pid)) {
+			printk("\nFound not running pid: %d. ", pid);
+			printk("Deleting this pid from grant list\n");
+			list_del(current_item);
+		}
+		++counter;
+	}
+	printk("\n");
+	spin_unlock(&GRANTED_LOCK);
+}
+
 void process_waiter(struct list_head *current_item)
 {
 	/**
@@ -207,6 +293,7 @@ void process_waiter(struct list_head *current_item)
 	printk("About to do list entry...\n");
 	struct lock_entry *entry = list_entry(current_item,
 					      struct lock_entry, list);
+
 	if(entry == NULL) {
 		printk("entry NULL");
 	}
@@ -254,7 +341,7 @@ static void print_grantlist(void) {
 	struct list_head *next_item;
 	int counter = 1;
 	spin_lock(&GRANTED_LOCK);
-	printk("\n**** \Granted list size: %d \n", list_size(&granted_list));
+	printk("\n**** Granted list size: %d \n", list_size(&granted_list));
 	list_for_each_safe(current_item, next_item, &granted_list) {
 		struct lock_entry *entry = list_entry(current_item,
 						      struct lock_entry,
@@ -268,27 +355,6 @@ static void print_grantlist(void) {
 	}
 	printk("\n");
 	spin_unlock(&GRANTED_LOCK);
-
-}
-
-/* *
- * Determines if the task with given pid is still running.
- */
-static int is_running(int pid) {
-
-	struct pid *pid_struct;
-	struct task_struct *task;
-	pid_struct = find_get_pid(pid);
-	task = pid_task(pid_struct,PIDTYPE_PID);
-	return -1;
-	// TODO: complete and Test this is_runnign method to see if it works
-
-}
-
-/**
- * Removes the locks for process that are no longer running
- */
-static void release_dead_tasks_locks() {
 
 }
 
@@ -349,6 +415,7 @@ SYSCALL_DEFINE1(set_orientation, struct dev_orientation __user *, orient)
 	}
 
 	printk("\n----After process wait list:\n");
+	is_running2();
 	print_waitlist();
 	print_grantlist();
 	spin_unlock(&WAITERS_LOCK);

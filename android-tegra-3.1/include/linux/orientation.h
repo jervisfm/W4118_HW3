@@ -9,6 +9,7 @@
 #include <linux/kernel.h>
 #include <linux/slab.h>
 #include <linux/pid.h>
+#include <linux/sched.h>
 
 
 /* Types for lock entry */
