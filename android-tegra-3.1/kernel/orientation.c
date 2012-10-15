@@ -509,7 +509,7 @@ SYSCALL_DEFINE1(orientunlock_read, struct orientation_range __user *, orient)
 	struct orientation_range korient;
 	struct list_head *current_item, *next_item;
 	struct lock_entry *entry = NULL;
-
+	int did_unlock = 0;
 	if (copy_from_user(&korient, orient, sizeof(struct orientation_range)) != 0)
 		return -EFAULT;
 	
@@ -520,18 +520,29 @@ SYSCALL_DEFINE1(orientunlock_read, struct orientation_range __user *, orient)
 				   struct lock_entry, granted_list);
 		if (range_equals(&korient, entry->range) &&
 		    entry->type == READER_ENTRY) {
+			/* Unlock is to be done original locking pid process */
+			int curr_pid = current->pid;
+			/* DO NOT RETURN eearly, process the entire list */
+			if (curr_pid != entry->pid)
+				continue;
+
 			list_del(current_item);
 			kfree(entry->range);
 			kfree(entry);
 			spin_unlock(&GRANTED_LOCK);
-			return 0;
+			did_unlock = 1;
+			break;
 		}
 		else
 			; //no locks with the orientation_range available
 	}
-	spin_unlock(&GRANTED_LOCK);
-	printk("SOUND THE ALARM\n");
-	return 0;
+
+	if (!did_unlock) {
+		spin_unlock(&GRANTED_LOCK);
+		return -1;
+	} else { /* unlocked successfully */
+		return 0;
+	}
 }
 
 SYSCALL_DEFINE1(orientunlock_write, struct orientation_range __user *, orient)
