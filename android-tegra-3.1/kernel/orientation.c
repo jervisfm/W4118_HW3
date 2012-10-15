@@ -218,7 +218,7 @@ static int is_running(int pid ){
 }
 
 
-static void is_running2() {
+static void is_running_test_method() {
 
 	struct list_head *current_item;
 	struct list_head *next_item;
@@ -395,6 +395,8 @@ SYSCALL_DEFINE1(set_orientation, struct dev_orientation __user *, orient)
 	
 	printk("About to acquire lock 257");
 	spin_lock(&WAITERS_LOCK);
+	printk("\nAttempting to remove dead task locks....");
+	release_dead_tasks_locks();
 	printk("\n====Before process wait list:\n");
 	print_waitlist();
 	print_grantlist();
@@ -415,7 +417,6 @@ SYSCALL_DEFINE1(set_orientation, struct dev_orientation __user *, orient)
 	}
 
 	printk("\n----After process wait list:\n");
-	is_running2();
 	print_waitlist();
 	print_grantlist();
 	spin_unlock(&WAITERS_LOCK);
