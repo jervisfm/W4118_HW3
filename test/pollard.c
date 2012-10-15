@@ -4,6 +4,7 @@
 #include <stdarg.h>
 #include <gmp.h>
 #include "prime.h"
+#include "orient_lock.h"
 
 #define FILENAME "integer"
 

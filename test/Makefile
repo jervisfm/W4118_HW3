@@ -11,8 +11,8 @@ all: trial pollard selector
 trial: trial.c orient_lock
 	$(CC) -o $@ $< $(ORIENT_OBJ) $(CFLAGS) $(LDFLAGS)
 
-pollard: pollard.c
-	$(CC) -o $@ $< $(CFLAGS) $(LDFLAGS)
+pollard: pollard.c orient_lock.o 
+	$(CC) -o $@ $(ORIENT_OBJ) $< $(CFLAGS) $(LDFLAGS)
 
 selector: selector.c orient_lock.o
 	$(CC) -o $@ $(ORIENT_OBJ) $< $(CFLAGS) $(LDFLAGS)
