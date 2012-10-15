@@ -226,8 +226,7 @@ void process_waiter(struct list_head *current_item)
 			if (!no_writer_waiting(target))
 				printk("Writer waiting\n");
 
-			if (no_writer_waiting(target) &&
-			   no_writer_grabbed(target))
+			if (no_writer_grabbed(target))
 				grant_lock(entry);
 		}
 		else { /* Writer */
