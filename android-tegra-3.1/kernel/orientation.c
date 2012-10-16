@@ -77,6 +77,8 @@ int no_reader_grabbed(struct orientation_range *target)
 }
 
 int list_size(struct list_head *head) {
+	return 0;
+	/*
 	if (head == NULL)
 		return 0;
 	int size = 0;
@@ -84,7 +86,7 @@ int list_size(struct list_head *head) {
 	for (curr = head->next; curr != head; curr = curr->next) {
 		++size;
 	}
-	return size;
+	return size; */
 }
 
 void grant_lock(struct lock_entry *entry)
@@ -102,6 +104,11 @@ void grant_lock(struct lock_entry *entry)
 	printk("Done, size %d\n", list_size(&granted_list));
 
 	printk("Deleting entry...");
+
+	if (&entry->list == NULL) {
+		printk("OOPS: &entry->list is NULLLLLLL ");
+	}
+
 	list_del(&entry->list);
 	printk("Doone\n");
 
@@ -499,15 +506,22 @@ SYSCALL_DEFINE1(orientlock_write, struct orientation_range __user *, orient)
 	if (entry == NULL) {
 		printk("Kmalloc failure!...\n");
 		return -ENOMEM;
+	} else {
+		printk("entry is OK: %p\n", entry);
 	}
 
 	entry->range = korient;
 	entry->pid = current->pid;
+	printk("Setting atomic grant value|");
 	atomic_set(&entry->granted, 0);
+	printk("Done|");
+	printk("Initializing list|");
 	INIT_LIST_HEAD(&entry->list);
 	INIT_LIST_HEAD(&entry->granted_list);
+	printk("doone|");
+	printk("Setting entry type....|");
 	entry->type = WRITER_ENTRY;
-
+	printk("Done!");
 
 	printk("Adding to waiters: size %d\n", list_size(&waiters_list));
 	printk("About to acquire lock 333");
