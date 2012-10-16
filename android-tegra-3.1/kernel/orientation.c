@@ -77,6 +77,7 @@ int no_reader_grabbed(struct orientation_range *target)
 }
 
 int list_size(struct list_head *head) {
+
 	return 0;
 	/*
 	if (head == NULL)
@@ -107,6 +108,14 @@ void grant_lock(struct lock_entry *entry)
 
 	if (&entry->list == NULL) {
 		printk("OOPS: &entry->list is NULLLLLLL ");
+	}
+
+	if (entry->list.next == NULL) {
+		printk("Next entry is NULLL\n");
+	}
+
+	if(entry->list.prev == NULL) {
+		printk("Preve entry is NULL");
 	}
 
 	list_del(&entry->list);
