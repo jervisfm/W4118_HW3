@@ -126,7 +126,7 @@ static char *read_line(FILE* input)
 	 */
 	int string_size = 1;
 
-	while (fscanf(input,"%c", &c) > 0 && c != '\n') {
+	while (fscanf(input, "%c", &c) > 0 && c != '\n') {
 		++string_size;
 		int new_buffersize = sizeof(char) * (string_size);
 		line = realloc(line, new_buffersize);
@@ -149,7 +149,8 @@ static char *read_line(FILE* input)
 /**
  * Returns only 1 on success and 0 on failure
  */
-static int read_integer(mpz_ptr result) {
+static int read_integer(mpz_ptr result)
+{
 
 	const char *filename = FILENAME;
 	char *integer_string = NULL;
@@ -169,12 +170,12 @@ static int read_integer(mpz_ptr result) {
 
 	printf("Attempting to take read lock...");
 	orient_read_lock(&read_lock);
-	printf("Acquired ! \n");
+	printf("Acquired !\n");
 	FILE *integer_file = fopen(filename, "r");
 	if (integer_file == NULL) {
 		ret_code = 0;
 		perror("Integer file not found: '%s'\n");
-	} else if ( (integer_string = read_line(integer_file)) != NULL) {
+	} else if ((integer_string = read_line(integer_file)) != NULL) {
 		printf("Read Integer: %s\n", integer_string);
 		mpz_init_set_str(result, integer_string, 10);
 		ret_code = 1;
@@ -188,11 +189,12 @@ static int read_integer(mpz_ptr result) {
 
 	printf("Attempting to release read lock...");
 	orient_read_unlock(&read_lock);
-	printf("Released ! \n");
+	printf("Released !\n");
 	return ret_code;
 }
 
-int main(void) {
+int main(void)
+{
 	int res;
 	char *str;
 	mpz_t largenum;
@@ -216,14 +218,15 @@ int main(void) {
 			return EXIT_FAILURE;
 
 		/*
-		 * We simply return the prime number itself if the base is prime.
+		 * We simply return the prime number
+		 * itself if the base is prime.
 		 * (We use the GMP probabilistic function with 10 repetitions).
 		 */
 		res = mpz_probab_prime_p(result, 10);
 		if (res) {
 			printf("%s is a prime number\n", str);
 			free(str);
-			// mpz_add(largenum, largenum, one);
+			/* mpz_add(largenum, largenum, one); */
 			continue;
 		}
 
@@ -233,7 +236,7 @@ int main(void) {
 		factor(result);
 		printf("\n");
 
-		//mpz_add(largenum, largenum, one);
+		/*mpz_add(largenum, largenum, one);*/
 	}
 
 	return EXIT_SUCCESS;
