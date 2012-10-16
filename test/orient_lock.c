@@ -18,7 +18,8 @@ __NR_orientlock_read
  */
 
 /* Keeps on attempting to acquire a Read lock until we succeed */
-void orient_read_lock(struct orientation_range *lock) {
+void orient_read_lock(struct orientation_range *lock)
+{
 	int ret = -1;
 	do {
 		ret = syscall(__NR_orientlock_read, lock);
@@ -26,7 +27,8 @@ void orient_read_lock(struct orientation_range *lock) {
 }
 
 /* Keeps on attempting to release the read lock until we succeed */
-void orient_read_unlock(struct orientation_range *lock) {
+void orient_read_unlock(struct orientation_range *lock)
+{
 	int ret = -1;
 	do {
 		ret = syscall(__NR_orientunlock_read, lock);
@@ -34,7 +36,8 @@ void orient_read_unlock(struct orientation_range *lock) {
 }
 
 /* Keeps on attempting to acquire a write lock until we succeed */
-void orient_write_lock(struct orientation_range *lock) {
+void orient_write_lock(struct orientation_range *lock)
+{
 	int ret = -1;
 	do {
 		ret = syscall(__NR_orientlock_write, lock);
@@ -42,7 +45,8 @@ void orient_write_lock(struct orientation_range *lock) {
 }
 
 /* Keeps on attempting to release the write lock until we succeed */
-void orient_write_unlock(struct orientation_range *lock) {
+void orient_write_unlock(struct orientation_range *lock)
+{
 	int ret = -1;
 	do {
 		ret = syscall(__NR_orientunlock_write, lock);
