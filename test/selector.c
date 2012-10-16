@@ -30,7 +30,8 @@ erminated using ctrl+c by the user. Before releasing the write lock, you should
 
 static mpz_t one;
 
-static void usage() {
+static void usage()
+{
 	printf("Invalid arguments.\n");
 	printf("Usage: selector [integer]\n");
 }
@@ -50,7 +51,8 @@ static int is_number(char *string)
 }
 
 
-int main(int argc, char **argv) {
+int main(int argc, char **argv)
+{
 	mpz_init_set_str(one, "1", 10);
 	mpz_t counter;
 	if (argc != 2 || !is_number(argv[1])) {
@@ -89,9 +91,9 @@ int main(int argc, char **argv) {
 		char *buf;
 		/* NULL says the mpz_init_set_str function
 		 * should auto-allocate the memory for buf */
-		buf = mpz_get_str(NULL,10,counter);
-		printf("Computed %s\n",buf);
-		if(buf == NULL) {
+		buf = mpz_get_str(NULL, 10, counter);
+		printf("Computed %s\n", buf);
+		if (buf == NULL) {
 			printf("Warning: Could not get integer\n");
 			fclose(integer_file);
 			orient_write_unlock(&write_lock);
