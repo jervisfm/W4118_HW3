@@ -437,10 +437,22 @@ SYSCALL_DEFINE1(orientlock_read, struct orientation_range __user *, orient)
 	DEFINE_WAIT(wait);
 	
 	korient = kmalloc(sizeof(struct orientation_range), GFP_KERNEL);
+
+	if (korient == NULL) {
+		printk("Kmalloc failure: orientlock_read");
+		return  -ENOMEM;
+	}
+
 	if (copy_from_user(korient, orient, sizeof(struct orientation_range)) != 0)
 		return -EFAULT;
 
 	entry = kmalloc(sizeof(struct lock_entry), GFP_KERNEL);
+
+	if (entry == NULL) {
+		printk("\nKmalloc failure: orientlock_read");
+		return -ENOMEM;
+	}
+
 	entry->range = korient;
 	entry->pid = current->pid;
 	atomic_set(&entry->granted,0);
@@ -473,11 +485,22 @@ SYSCALL_DEFINE1(orientlock_write, struct orientation_range __user *, orient)
 
 	printk("Before");
 	korient = kmalloc(sizeof(struct orientation_range), GFP_KERNEL);
+
+	if (korient == NULL) {
+		printk("Kmalloc failure: orientlock_write\n");
+		return  -ENOMEM;
+	}
 	if (copy_from_user(korient, orient, sizeof(struct orientation_range)) != 0)
 		return -EFAULT;
 	printk("After");
 
 	entry = kmalloc(sizeof(entry), GFP_KERNEL);
+
+	if (entry == NULL) {
+		printk("Kmalloc failure!...\n");
+		return -ENOMEM;
+	}
+
 	entry->range = korient;
 	entry->pid = current->pid;
 	atomic_set(&entry->granted, 0);
